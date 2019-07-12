@@ -9,11 +9,9 @@ urls:
   /camera (all post requests)
     grab: grab image (allow parameter setting)
     record: start recording (allow parameter setting)
-    status: get recording status
-    space: get space on disk (in video directory)
+    status: get recording status, disk space, available videos
     remove: remove video file
     config: set grab/record settings
-    videos: list available videos    
     op: (grab/record/status/space/remove/config)
 """
 
@@ -39,7 +37,8 @@ video_directory = os.path.join(this_directory, 'videos')
 
 class CamSite(tornado.web.RequestHandler):
     def get(self):
-        template = os.path.join(this_directory, 'index.html')
+        template = os.path.join(this_directory, 'templates', 'camera.html')
+        self.render(template)
 
 
 class CamQuery(tornado.web.RequestHandler):
@@ -80,11 +79,18 @@ class CamQuery(tornado.web.RequestHandler):
         space, used, avail, perc = ts[1], ts[2], ts[3], ts[4]
         return avail
 
-    def get_n_videos(self):
-        return len(os.listdir(video_directory))
+    def get_video_filenames(self):
+        fns = [os.path.splitext(fn) for fn in os.listdir(video_directory)]
+        return [fn[0] for fn in fns if fn[1] == '.h264']
 
     def get(self):
         self.return_image()
+    
+    def check_filename(self, fn):
+        for c in '. \\/':
+            if c in fn:
+                return True
+        return False
 
     def post(self):
         args = list(self.request.arguments.keys())
@@ -97,6 +103,7 @@ class CamQuery(tornado.web.RequestHandler):
         if op == 'grab':
             # grab camera frame return as jpeg
             self.return_image()
+            return
         elif op == 'record':
             # record video (if not recording)
             if self.is_recording():
@@ -106,14 +113,25 @@ class CamQuery(tornado.web.RequestHandler):
             # get filename from kwargs (or make a new one)
             if 'fn' in kwargs:
                 fn = kwargs['fn']
-                # TODO sanitize filename (no slashes, periods, spaces, etc)
+                if self.check_filename(fn):
+                    self.set_status(400)
+                    self.write("Bad Request: invalid filename");
+                    return
             else:
                 fn = '_'.join([
                     socket.gethostname(),
                     datetime.datetime.now().strftime('%y%m%d_%H%M%S')])
-            fn += '.h264'
-            full_fn = os.path.join(video_directory, fn)
-            # TODO if already exists, don't overwrite
+            base_fn = os.path.join(video_directory, fn)
+            full_fn = base_fn + '.h264'
+            i = 0
+            # if already exists, don't overwrite
+            while os.path.exists(full_fn):
+                full_fn = "%s_%i.h264" % (base_fn, i)
+                i += 1
+                if i > 100:
+                    self.set_status(500)
+                    self.write("Server Error: could not make unique filename")
+                    return
             # get duration from kwargs
             if 'duration' not in kwargs:
                 self.set_status(400)
@@ -135,27 +153,29 @@ class CamQuery(tornado.web.RequestHandler):
                 r['error'] = self.application.error
             self.write(json.dumps(r))
         elif op == 'status':
-            # get status (recording?, space?, n_videos?)
+            # get status
             status = {
                 'recording': self.is_recording(),
                 'space': self.get_disk_space(),
-                'n_videos': self.get_n_videos(),
+                'videos': sorted(self.get_video_filenames()),
+                'grab_args': self.application.grab_args,
             }
             if self.application.error is not None:
                 status['error'] = self.application.error
                 self.application.error = None
             # json encode
             self.write(json.dumps(status))
-        elif op == 'videos':
-            fns = os.listdir(video_directory)
-            self.write(json.dumps(fns))
         elif op == 'remove':
             # remove video filename
             if 'fn' not in kwargs:
                 self.set_status(400)
                 self.write("Bad Request: missing filename[fn]")
                 return
-            # TODO sanitize input
+            # sanitize input
+            if self.check_filename(kwargs['fn']):
+                self.set_status(400)
+                self.write("Bad Request: invalid filename");
+                return
             # remove video_directory + fn
             fn = kwargs['fn'] + '.h264'
             full_fn = os.path.join(video_directory, fn)
@@ -172,9 +192,10 @@ class CamQuery(tornado.web.RequestHandler):
                 return
         elif op == 'config':
             # configure video/grab settings
-            if 'args' not in kwargs:
-                self.set_status(400)
-                self.write("Bad Request: missing arguments[args]")
+            if 'args' not in kwargs:  # return config instead
+                self.write(json.dumps(self.application.grab_args))
+                #self.set_status(400)
+                #self.write("Bad Request: missing arguments[args]")
                 return
             s = urllib.parse.unquote(kwargs['args'])
             print("setting grab_args: %s" % (s, ))
