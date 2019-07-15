@@ -210,7 +210,8 @@ class CamApplication(tornado.web.Application):
     def __init__(self, **kwargs):
         self.record_process = None
         self.error = None
-        self.grab_args = ""
+        # TODO load defaults
+        self.grab_args = "-w 100 -h 100"
         handlers = [
             (r"/", CamSite),
             (r"/camera", CamQuery),

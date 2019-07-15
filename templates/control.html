@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Control server</title>
+        <!-- jquery -->
+        <script src="static/jquery-3.4.0.min.js"></script>
+        <style>
+input.modified {
+    background-color: pink;
+}
+
+img.camera_image {
+    width: 300px;
+}
+        </style>
+        <script>
+var cameras = {};
+
+
+camera_query = function(op, post_data, cb) {
+    if (post_data == null) {
+        post_data = {op: op};
+    } else {
+        post_data.op = op;
+    }
+    r = $.ajax({
+        url: "camera",
+        type: "POST",
+        dataType: "json",
+        data: post_data,
+    });
+    if (cb != null) r.done(cb);
+};
+
+
+add_camera = function(camera) {
+    if (camera in cameras) return;
+    ui_handle = camera.replace(/\./g, '_');
+    cameras[camera] = {
+        ui_handle: camera.replace(/\./g, '_'),
+        new_status: function (json) {
+            // TODO update UI
+        },
+        grab_image: function() {
+            xhr = new XMLHttpRequest();
+            xhr.onreadystatechange = function () {
+                if (this.readyState == XMLHttpRequest.DONE && this.status == 200) {
+                    url = window.URL || window.webkitURL;
+                    // update image display
+                    $("#image_" + cameras[camera].ui_handle).attr("src", url.createObjectURL(this.response));
+                };
+            };
+            //xhr.open("POST", "/control?camera=" + camera + "&op=grab");
+            xhr.open("POST", "control", true);
+	    // NEEDS this for tornado to parse it properly
+	    xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+            xhr.responseType = "blob";
+	    data = "camera=" + camera + "&op=grab";
+	    console.log({data:data});
+            xhr.send(data);
+            //xhr.send("camera=" + camera + "&op=grab");
+	    //xhr.send();
+        },
+    };
+    // add UI
+    camera_ul = $("#cameras");
+    template = document.getElementById("template-list-item");
+    innerHTML = template.innerHTML
+        .replace(/%camera%/g, camera)
+        .replace(/%ui_query%/g, cameras[camera].ui_handle);
+    camera_ul.append(innerHTML);
+    cameras[camera].get_status = function() {
+        $.ajax({
+            url: "control",
+            type: "POST",
+            dataType: "json",
+            data: {
+                "camera": camera,
+                "op": "status",
+            }}).done(cameras[camera].new_status);
+    };
+    cameras[camera].grab_image();
+};
+
+
+remove_camera = function(camera) {
+    if (!(camera in cameras)) return;
+    // clean up UI
+    $("#li_" + camera).remove();
+    delete cameras[camera];
+};
+
+
+get_status = function() {
+    // get list of cameras
+    $.ajax({
+        url: "control",
+        type: "POST",
+        dataType: "json"}).done(function (json) {
+            json.forEach(function (v) {
+                if (!(v in cameras)) {
+                    // add camera
+                    add_camera(v);
+                };
+            });
+            // for each camera, get status
+            for (camera in cameras) {
+                if (json.indexOf(camera) == -1) {
+                    // remove camera
+                    remove_camera(camera)
+                } else {
+                    // update camera status
+                    cameras[camera].get_status();
+                };
+            };
+        });
+};
+
+
+/*
+set_camera_config = function () {
+    camera_query("config", {args: $("#config").val()}, get_camera_status);
+    $("#config").removeClass("modified");
+};
+
+
+start_recording = function () {
+    data = {
+        duration: $("#duration").val(),
+    };
+    fn = $("#filename").val();
+    if (fn != "") data.fn = fn;
+    camera_query("record", data, get_camera_status);
+};
+
+
+new_camera_status = function(json) {
+    console.log({new_status: json});
+    status = json;
+    $("#recording").text(json.recording ? "Stop" : "Record");
+    $("#n_videos").text(json.videos.length);
+    $("#space").text(json.space);
+    if (!json.recording & $("#auto_grab").prop("checked")) {
+        date = new Date();
+        time_ms = date.getTime();
+        if (time_ms - last_grab_time > time_between_grabs) {
+            get_camera_image();
+        };
+    };
+    // only overwrite this if it's not being modified
+    if (!$("#config").hasClass("modified")) {
+        $("#config").val(json.grab_args);
+    };
+    // video filenames
+    vul = $("ul#videos");
+    json.videos.forEach(function (v) {
+        li = $("li#" + v);
+        if (li.length == 0) {
+            // add it
+            vul.append($("<li>").append().attr("id", v));
+            li = $("li#" + v);
+            //li.append($("<a>"));
+            //li.children("a").text(v).attr("href", "/videos/" + v + ".h264");
+            li.append($("<a>").text(v).attr("href", "/videos/" + v + ".h264"));
+            // add delete button
+            li.append($("<button>").on("click", function () {
+                delete_video(v);
+            }).text("Delete"));
+        };
+    });
+    // remove any videos listed but not in json.videos
+    $("ul#videos li").each(function (i, e) {
+        if (json.videos.indexOf($(e).attr("id")) == -1) $(e).remove();
+    });
+};
+*/
+
+$(document).ready(function() {
+    get_status();
+    //window.setInterval(get_status, 3000);
+});
+        </script>
+    </head>
+    <body>
+        <ul id="cameras">  <!-- camera list -->
+        </ul>
+        <!--
+        <h1>Status</h1>
+        <div id="status">
+            <button type="button", id="recording" onclick="start_recording();">Unknown</button> 
+            Duration (ms): <input type="number" id="duration" min="1" max="86400000" value="3000">
+            Filename: <input type="text" id="filename">
+            <span id="space">Unknown</span> free 
+            <span id="n_videos">Unknown</span> videos
+        </div>
+        <div id="config_div">
+            Grab arguments: <input type="text" id="config"> 
+            <button type="button" onclick="set_camera_config()">Set</button>
+        </div>
+        <div>
+            <input type="checkbox" id="auto_grab" onclick="get_camera_image();">Auto grab
+        </div>
+        <img id="camera_image"></img>
+        <h1>Videos</h1>
+        <ul id="videos"></ul>
+	-->
+        <script id="template-list-item" type="text/template">
+            <li id="li_%ui_query%">
+                <img id="image_%ui_query%" class="camera_image" onclick="cameras['%camera%'].grab_image()"></img>
+            </li>
+
+        </script>
+        <!--
+// TODO add img#image_camera
+    // record button
+    // duration
+    // filename
+    // disk space, n_videos
+    // grab arguments
+    // link to server
+        -->
+    </body>
+</html>
