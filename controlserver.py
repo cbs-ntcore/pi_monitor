@@ -58,7 +58,7 @@ class ControlQuery(tornado.web.RequestHandler):
     def camera_query(self, camera, query):
         url = "http://%s:8888/camera" % camera
         data = urllib.parse.urlencode(query).encode('latin')
-        print("Request: %s, [%s]=%s" % (url, query, data))
+        # print("Request: %s, [%s]=%s" % (url, query, data))
         req = urllib.request.Request(
             url, data=urllib.parse.urlencode(query).encode('latin'))
         try:
@@ -68,21 +68,21 @@ class ControlQuery(tornado.web.RequestHandler):
             res = e
         # relay headers, status code, data
         if hasattr(res, 'read'):
-            print("Relaying data")
+            # print("Relaying data")
             #data = res.read()
             #self.write(data)
             self.write(res.read())
         # do this after writing to overwrite headers
         for h in res.headers.items():
-            print("set_header: %s" % (h, ))
+            # print("set_header: %s" % (h, ))
             self.set_header(*h)
-        print("set_header: %s" % (h, ))
+        # print("set_header: %s" % (h, ))
         self.set_status(res.status)
 
     def post(self):
         args = list(self.request.arguments.keys())
         kwargs = {k: self.get_argument(k) for k in args}
-        print("POST: %s" % (kwargs, ))
+        # print("POST: %s" % (kwargs, ))
         if 'camera' not in kwargs:
             if 'remove' in kwargs:
                 # remove camera from list
@@ -93,10 +93,22 @@ class ControlQuery(tornado.web.RequestHandler):
             return
         camera = kwargs['camera']
         if camera not in self.application.cameras:
-            self.add_camera(camera)
+            try:
+                self.add_camera(camera)
+            except socket.gaierror:
+                # invalid lookup
+                self.remove_camera(camera)
+                # TODO return error
+                return
         del kwargs['camera']
         # pass on camera query
-        self.camera_query(camera, kwargs)
+        try:
+            self.camera_query(camera, kwargs)
+        except urllib.request.URLError as e:
+            # url does not exist
+            # remove camera
+            self.remove_camera(camera)
+            # TODO return error
 
 
 class ControlApplication(tornado.web.Application):
