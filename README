@@ -1,0 +1,5 @@
+
+
+add the following to the crontab to automatically start the server on reboot
+
+@reboot python3 /home/pi/Repositories/cbs-ntcore/pi_monitor/camserver.py
