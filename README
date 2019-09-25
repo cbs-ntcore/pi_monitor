@@ -1,7 +1,7 @@
 Assumes you're running a raspberry pi with user pi
 
 - checkout repository to /home/pi/Repositories/cbs-ntcore/pi_monitor
-- install requirements: "sudo apt install python3-tornado"
+- install requirements: "sudo apt install python3-tornado ntfs-3g"
 - enable picamera (and usually ssh) using raspi-config
 - run python code: "python3 /home/pi/Repositories/cbs-ntcore/pi_monitor/camserver.py"
 
@@ -14,7 +14,7 @@ sudo ln -s /home/pi/Repositories/cbs-ntcore/pi_monitor/setup/rules/99-automount_
 add the following to the crontab to automatically start the server on reboot
 
 ```
-@reboot python3 /home/pi/Repositories/cbs-ntcore/pi_monitor/camserver.py
+@reboot sleep 10 && python3 /home/pi/Repositories/cbs-ntcore/pi_monitor/camserver.py
 ```
 
 to use the pi as an access point run the following scripts:
