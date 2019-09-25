@@ -13,6 +13,14 @@ urls:
     remove: remove video file
     config: set grab/record settings
     op: (grab/record/status/space/remove/config)
+
+  configuration:
+    (add hostname to video filename) [meh]
+    (duration) [meh]
+    (grab arguments) [meh]
+    (night mode [getting LED control is tricky on the pi3])
+
+  duration: allow ms/s/m/h & inf
 """
 
 import datetime
@@ -33,6 +41,7 @@ import tornado.web
 this_directory = os.path.dirname(os.path.realpath(__file__))
 static_directory = os.path.join(this_directory, 'static')
 video_directory = os.path.join(this_directory, 'videos')
+grab_args_fn = os.path.expanduser('~/.grab_args')
 
 
 class CamSite(tornado.web.RequestHandler):
@@ -133,10 +142,33 @@ class CamQuery(tornado.web.RequestHandler):
                     self.write("Server Error: could not make unique filename")
                     return
             # get duration from kwargs
-            if 'duration' not in kwargs:
+            if 'duration' not in kwargs or len(kwargs['duration']) == 0:
                 self.set_status(400)
                 self.write("Bad Request: missing duration")
                 return
+            if not kwargs['duration'].isdigit():
+                d = kwargs['duration']
+                if d[0] == '-' or d.lower() == 'inf':
+                    v = 0  # continuous
+                    m = 0
+                elif d[-1] == 's':  # seconds
+                    v = kwargs['duration'][:-1]
+                    m = 1000
+                elif d[-1] == 'm':  # minutes
+                    v = kwargs['duration'][:-1]
+                    m = 1000 * 60
+                elif d[-1] == 'h':  # hours
+                    v = kwargs['duration'][:-1]
+                    m = 1000 * 60 * 60
+                else:
+                    self.set_status(400)
+                    self.write("Bad Request: invalid duration[%s]" % d)
+                try:
+                    kwargs['duration'] = str(int(v) * m)
+                except ValueError as e:
+                    self.set_status(400)
+                    self.write(
+                        "Bad Request: invalid duration[%s:%s]" % (d, e))
             # start recording
             cmd = " ".join([
                 "raspivid -t %s -n -o %s" % (kwargs['duration'], full_fn),
@@ -152,6 +184,20 @@ class CamQuery(tornado.web.RequestHandler):
             if not s:
                 r['error'] = self.application.error
             self.write(json.dumps(r))
+        elif op == 'stop':
+            if self.application.record_process is None:
+                # TODO set status? self.set_status(200)
+                # self.write("not recording, ignoring")
+                return
+            print("killing record process")
+            # send kill to record_process
+            self.application.record_process.kill()
+            # join
+            # TODO timeout
+            print("waiting for record process to terminate")
+            self.application.record_process.wait()
+            print("setting record process to None")
+            self.application.record_process = None
         elif op == 'status':
             # get status
             status = {
@@ -200,6 +246,10 @@ class CamQuery(tornado.web.RequestHandler):
             s = urllib.parse.unquote(kwargs['args'])
             print("setting grab_args: %s" % (s, ))
             self.application.grab_args = s
+            # save grab args
+            print("saving grab_args to %s" % grab_args_fn)
+            with open(grab_args_fn, 'w') as f:
+                f.write(self.application.grab_args)
         else:  # invalid op
             self.set_status(400)
             self.write("Bad Request: unkonwn operation[op:%s]" % (op, ))
@@ -210,8 +260,12 @@ class CamApplication(tornado.web.Application):
     def __init__(self, **kwargs):
         self.record_process = None
         self.error = None
-        # TODO load defaults
-        self.grab_args = "-w 100 -h 100"
+        # load defaults
+        if os.path.exists(grab_args_fn):
+            with open(grab_args_fn, 'r') as f:
+                self.grab_args = f.readline().strip()
+        else:
+            self.grab_args = "-w 100 -h 100"
         handlers = [
             (r"/", CamSite),
             (r"/camera", CamQuery),
