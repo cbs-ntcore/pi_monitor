@@ -1,1 +1,0 @@
-ACTION=="add", KERNEL=="sd?", SUBSYSTEM=="block", ENV{ID_BUS}=="usb", RUN+="/home/pi/Repositories/cbs-ntcore/pi_monitor/automount_script.sh"

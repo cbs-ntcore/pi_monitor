@@ -22,11 +22,16 @@ sudo apt install dnsmasq hostapd
 sudo systemctl stop dnsmasq
 sudo systemctl stop hostapd
 
-sudo cp /etc/dhcpcd.conf /etc/dhcpcd.conf.client
-sudo cp /etc/dhcpcd.conf /etc/dhcpcd.conf.ap
+if [ -e /etc/dhcpcd.conf ]; then
+  sudo cp /etc/dhcpcd.conf /etc/dhcpcd.conf.client
+  sudo cp /etc/dhcpcd.conf /etc/dhcpcd.conf.ap
+else
+  sudo touch /etc/dhcpcd.conf.client
+  sudo touch /etc/dhcpcd.conf.ap
+fi
 
 # configure dhcpcd.conf for ap mode
-tee -a /etc/dhcpcd.conf.ap > /dev/null << EOT
+sudo tee -a /etc/dhcpcd.conf.ap > /dev/null << EOT
 nohook wpa_supplicant
 interface wlan0
 static ip_address=10.0.0.1/24
@@ -35,14 +40,17 @@ EOT
 
 # configure dns
 sudo cp /etc/dnsmasq.conf /etc/dnsmasq.conf.orig
-tee -a /etc/dnsmasq.conf > /dev/null << EOT
+sudo tee -a /etc/dnsmasq.conf > /dev/null << EOT
 interface=wlan0
 dhcp-range=10.0.0.2,10.0.0.5,255.255.255.0,12h
 EOT
 
 # configure access point
-sudo cp /etc/hostapd/hostapd.conf /etc/hostapd/hostapd.conf.orig
-tee -a /etc/hostapd/hostapd.conf > /dev/null << EOT
+if [ -e /etc/hostapd/hostapd.conf ]; then
+    sudo cp /etc/hostapd/hostapd.conf /etc/hostapd/hostapd.conf.orig
+fi
+
+sudo tee -a /etc/hostapd/hostapd.conf > /dev/null << EOT
 interface=wlan0
 hw_mode=g
 channel=10
