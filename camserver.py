@@ -226,6 +226,15 @@ class CamQuery(tornado.web.RequestHandler):
             self.application.record_process.wait()
             print("setting record process to None")
             self.application.record_process = None
+        elif op == 'shutdown':
+            cmd = "sudo shutdown -h now"
+            print("calling: %s" % (cmd, ))
+            try:
+                r = subprocess.check_output(cmd.split())
+            except subprocess.CalledProcessError as e:
+                self.set_status(500)
+                self.write("shutdown failed: %s" % (e, ))
+                return
         elif op == 'status':
             # get status
             status = {
