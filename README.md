@@ -29,3 +29,9 @@ For accurate LED control, add the following to /boot/config.txt then reboot
 ```
 disable_camera_led=1
 ```
+
+If when cloning a SD image you want to rename the pi, change the name in the following:
+
+- /etc/hostapd/hostapd.conf
+- /etc/hostname
+- /etc/hosts
