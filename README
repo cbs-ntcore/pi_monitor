@@ -24,4 +24,8 @@ bash setup_ap.sh NEWSSID NEWPASSWORD
 bash enable_ap.sh  # note this will take down any wifi connection
 # run disable_ap.sh to disable the ap mode
 ```
+
+For accurate LED control, add the following to /boot/config.txt then reboot
+```
+disable_camera_led=1
 ```

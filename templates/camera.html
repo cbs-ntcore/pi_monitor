@@ -126,7 +126,19 @@ new_camera_status = function(json) {
 };
 
 
+set_led = function() {
+    if ($("#led_state").prop("checked")) {
+        console.log("Turn on led");
+	camera_query("led", {"state": 1});
+    } else {
+        console.log("Turn off led");
+	camera_query("led", {"state": 0});
+    };
+};
+
+
 $(document).ready(function() {
+    $("#led_state").prop("indeterminate", true);
     $("#config").bind("change keyup input", function() {
         $(this).addClass("modified");
     });
@@ -151,6 +163,7 @@ $(document).ready(function() {
             <!-- text input for camera args, turn red on edit, submit on enter -->
             Grab arguments: <input type="text" id="config"> 
             <button type="button" onclick="set_camera_config()">Set</button>
+	    Day mode: <input type="checkbox" id="led_state" onclick="set_led();">
         </div>
         <div>
             <input type="checkbox" id="auto_grab" onclick="get_camera_image();">Auto grab

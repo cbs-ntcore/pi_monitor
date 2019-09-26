@@ -24,9 +24,11 @@ urls:
 """
 
 import datetime
+import fcntl
 import json
 import os
 import socket
+import struct
 import subprocess
 import sys
 import time
@@ -42,6 +44,21 @@ this_directory = os.path.dirname(os.path.realpath(__file__))
 static_directory = os.path.join(this_directory, 'static')
 video_directory = os.path.join(this_directory, 'videos')
 grab_args_fn = os.path.expanduser('~/.grab_args')
+
+
+def set_led(state, led=134):
+    if state not in (0, 1):
+        raise ValueError("Invalid state: %s (not 0/1)" % state)
+    b = struct.pack("=8I", 32, 0, 0x38041, 8, 0, led, state, 0)
+    f = os.open("/dev/vcio", os.O_TRUNC)
+    try:
+        fcntl.ioctl(f, 0xC0046400, b)
+    except Exception as e:
+        try:
+            os.close(f)
+        except Exception:
+            pass
+        raise e
 
 
 class CamSite(tornado.web.RequestHandler):
@@ -113,6 +130,17 @@ class CamQuery(tornado.web.RequestHandler):
             # grab camera frame return as jpeg
             self.return_image()
             return
+        elif op == 'led':
+            if 'state' not in kwargs:
+                self.set_status(400)
+                self.write("Bad Request: missing state [0/1]")
+            try:
+                set_led(int(kwargs['state']))
+            except Exception as e:
+                self.set_status(500)
+                self.write(
+                    "Server error: failed to set led to state=%s"
+                    % kwargs['state'])
         elif op == 'record':
             # record video (if not recording)
             if self.is_recording():
