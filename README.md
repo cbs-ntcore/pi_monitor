@@ -1,6 +1,6 @@
 Assumes you're running a raspberry pi with user pi
 
-- checkout repository to /home/pi/Repositories/cbs-ntcore/pi_monitor
+- clone repository to /home/pi/Repositories/cbs-ntcore/pi_monitor
 - install requirements: "sudo apt install python3-tornado ntfs-3g"
 - enable picamera (and usually ssh) using raspi-config
 - run python code: "python3 /home/pi/Repositories/cbs-ntcore/pi_monitor/camserver.py"
