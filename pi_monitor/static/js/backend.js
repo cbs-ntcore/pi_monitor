@@ -2,9 +2,11 @@ var config_editor = null;
 var image_poll_timer = null;
 
 
-call_method = function (method, endpoint, callback) {
+call_method = function (method, args, kwargs, callback, endpoint) {
 	if (endpoint === undefined) endpoint = "/camera/";
 	cmd = {method: method};
+	if (args !== undefined) cmd.args = args;
+	if (kwargs !== undefined) cmd.kwargs = kwargs;
 	fetch(endpoint, {
 		method: "POST", body: JSON.stringify(cmd),
 		headers: {"Content-type": "application/json"},
@@ -22,20 +24,21 @@ call_method = function (method, endpoint, callback) {
 };
 
 
-get_config = function (cb, endpoint) {
+get_config = function (cb) {
 	callback = function (result) {
 		config_editor.set(result);
 		document.getElementById("config").style.backgroundColor = "";
 		if (cb !== undefined) cb(result);
 	};
-	call_method("get_config", endpoint, callback);
+	call_method("get_config", undefined, undefined, callback, "/camera/");
 };
 
 
-set_config = function (endpoint) {
-	call_method("set_config", endpoint, function (result) {
+set_config = function () {
+	cfg = config_editor.get();
+	call_method("set_config", undefined, undefined, function (result) {
 		document.getElementById("config").style.backgroundColor = "";
-	});
+	}, "/camera/");
 };
 
 
@@ -61,7 +64,7 @@ new_image = function (image) {
 
 
 get_image = function () {
-	call_method("current_frame", "/camera/", new_image);
+	call_method("current_frame", undefined, undefined, new_image, "/camera/");
 };
 
 
