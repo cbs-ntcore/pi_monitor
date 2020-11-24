@@ -12,6 +12,7 @@ import datetime
 import io
 import logging
 import os
+import re
 import socket
 import tempfile
 import threading
@@ -103,7 +104,6 @@ class CameraThread(threading.Thread):
         self.join()
 
     def set_config(self, cfg, update=False, save=False):
-        # TODO option to save config to disk
         delta = {}
         with self.lock:
             pcfg = copy.deepcopy(self.cfg)
@@ -124,12 +124,18 @@ class CameraThread(threading.Thread):
                 logging.debug("set_config: contains settings: {}".format(delta['settings']))
                 for k in delta['settings']:
                     setattr(self.cam, k, delta['settings'][k])
+            if save:
+                to_save = copy.deepcopy(self.cfg)
 
         if 'record' in delta:
             if delta['record']:
                 self.start_recording()
             else:
                 self.stop_recording()
+
+        if save:
+            logging.debug(f"Saving config to {config_filename}")
+            config.save(to_save, config_filename)
 
     def get_config(self):
         with self.lock:
@@ -153,22 +159,27 @@ class CameraThread(threading.Thread):
             # %i : filename index
             dt = datetime.datetime.now()
             tokens = {
-                '%i': str(self.filename_index),  # TODO zero pad?
+                '%[0-9]*i': self.filename_index,
                 '%h': hostname,
                 '%d': dt.strftime('%y%m%d'),
                 '%t': dt.strftime('%H%M%S'),
             }
             fn = self.cfg['filename']
             for token in tokens:
-                if token in fn:
-                    fn = fn.replace(token, tokens[token])
-            # TODO check extension
+                pattern = re.compile(token)
+                value = tokens[token]
+                while pos := pattern.search(fn):
+                    try:
+                        svalue = fn[pos.start():pos.end()] % value
+                    except ValueError:
+                        svalue = value
+                    fn = fn[:pos.start()] + svalue + fn[pos.end():]
             self.filename_index += 1
             self.filename = os.path.join(self.cfg['video_directory'], fn)
 
             # make directory if it doesn't exist
             directory = os.path.dirname(self.filename)
-            if not os.path.exists(directory):
+            if not os.path.exists(directory) and directory != '':
                 logging.debug(f"Making directory {directory}")
                 os.makedirs(directory)
             return self.filename
@@ -244,7 +255,7 @@ def test():
 
     cfg = cam.get_config()
     ncfg = copy.deepcopy(default_config)
-    ncfg['filename'] = '%i.h264'
+    ncfg['filename'] = '%i_%i.h264'
     ncfg['video_directory'] = ''
     cam.set_config(ncfg, update=False)
     # check that config updates
@@ -254,7 +265,11 @@ def test():
     with cam.lock:
         # fake recording so filename index doesn't reset
         cam.record_start = 0
-    for tfn in ('0.h264', '1.h264'):
+    for tfn in ('0_0.h264', '1_1.h264'):
+        fn = cam.next_filename()
+        assert fn == tfn, f"{fn} != {tfn}"
+    cam.set_config({"filename": "%04i_%02i.h264"}, update=True)
+    for tfn in ('0002_02.h264', '0003_03.h264'):
         fn = cam.next_filename()
         assert fn == tfn, f"{fn} != {tfn}"
     with cam.lock:
