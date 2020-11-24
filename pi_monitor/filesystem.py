@@ -5,7 +5,7 @@ videos
 - convert
 - remove
 """
-
+import logging
 import os
 import subprocess
 
@@ -17,10 +17,10 @@ def build_conversion_command(src, dst=None):
     if not os.path.exists(src):
         raise FileNotFoundError(f"{src} does not exist")
     if dst is None:
-        dst = os.path.basename(src) + '.mp4'
+        dst = os.path.splitext(src)[0] + '.mp4'
     if dst == src:
         raise FileExistsError(f"{src} and {dst} cannot be equal")
-    if not os.path.dirname(dst):
+    if not os.path.exists(os.path.dirname(dst)):
         os.makedirs(os.path.dirname(dst))
     return cmd_template.format(src=src, dst=dst)
 
