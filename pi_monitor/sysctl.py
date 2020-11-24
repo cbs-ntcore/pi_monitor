@@ -19,8 +19,11 @@ class SystemControl:
         """Use format from date -I"seconds" (example: 2020-08-25T16:32:15+01:00)"""
         if not date_string_re.match(datetime):
             raise Exception("set_date: Invalid format see output of date -I'seconds'")
-        return subprocess.check_output(f"sudo date --set='{datetime}'".split())
+        return subprocess.check_output(
+            f"sudo date --set={datetime}", shell=True).decode('ascii')
     
     def get_date(self):
         dt = datetime.datetime.now(datetime.timezone.utc).astimezone(local_timezone)
-        return dt.strftime('%Y-%m-%dT%H:%M:%S%z')
+        s = dt.strftime('%Y-%m-%dT%H:%M:%S%z')
+        # add colon to match output/input of date -I"seconds"
+        return s[:-2] + ':' + s[-2:]
