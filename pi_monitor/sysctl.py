@@ -1,9 +1,11 @@
+import datetime
 import re
 import subprocess
 
 
+local_timezone = datetime.datetime.now(datetime.timezone.utc).astimezone().tzinfo
 date_string_re = re.compile(
-    r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\+[0-9]{2}:[0-9]{2}")
+    r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[\+\-][0-9]{2}:[0-9]{2}")
 
 
 class SystemControl:
@@ -18,3 +20,7 @@ class SystemControl:
         if not date_string_re.match(datetime):
             raise Exception("set_date: Invalid format see output of date -I'seconds'")
         return subprocess.check_output(f"sudo date --set='{datetime}'".split())
+    
+    def get_date(self):
+        dt = datetime.datetime.now(datetime.timezone.utc).astimezone(local_timezone)
+        return dt.strftime('%Y-%m-%dT%H:%M:%S%z')

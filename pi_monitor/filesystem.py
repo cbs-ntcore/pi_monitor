@@ -10,7 +10,7 @@ import os
 import subprocess
 
 
-class Filesystem:
+class FileSystem:
     def __init__(self):
         pass
 
