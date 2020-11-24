@@ -1,12 +1,10 @@
 var config_editor = null;
-var state_poll_timer = null;
+var image_poll_timer = null;
 
 
-get_config = function (cb, endpoint) {
-	if (endpoint == undefined) endpoint = "/camera/";
-	cmd = {
-		method: "get_config",
-	};
+call_method = function (method, endpoint, callback) {
+	if (endpoint === undefined) endpoint = "/camera/";
+	cmd = {method: method};
 	fetch(endpoint, {
 		method: "POST", body: JSON.stringify(cmd),
 		headers: {"Content-type": "application/json"},
@@ -14,36 +12,29 @@ get_config = function (cb, endpoint) {
 		if (response.status !== 200) console.log({response_error: response});
 		response.json().then((data) => {
 			if (data.type == "error") {
-				console.log({data_error: data.result});
+				console.log({data_error: data.error});
 			} else {
-				config_editor.set(data.result);
-				document.getElementById("config").style.backgroundColor = "";
-				if (cb !== undefined) cb();
+				if (callback !== undefined)
+					callback(data.result);
 			};
 		});
 	});
 };
 
 
-set_config = function (endpoint) {
-	if (endpoint == undefined) endpoint = "/camera/";
-	cfg = config_editor.get();
-	console.log({set_config: cfg});
-	cmd = {
-		method: "set_config",
-		args: [cfg, ],
+get_config = function (cb, endpoint) {
+	callback = function (result) {
+		document.getElementById("config").style.backgroundColor = "";
+		if (cb !== undefined) cb(result);
 	};
-	fetch(endpoint, {
-		method: "POST", body: JSON.stringify(cmd),
-		headers: {"Content-type": "application/json"},
-	}).then((response) => {
-		if (response.status !== 200) {
-			console.log({response_error: response});
-		} else {
-			document.getElementById("config").style.backgroundColor = "";
-		};
-	});
+	call_method("get_config", endpoint, cb);
+};
 
+
+set_config = function (endpoint) {
+	call_method("set_config", endpoint, function (result) {
+		document.getElementById("config").style.backgroundColor = "";
+	});
 };
 
 
@@ -63,96 +54,15 @@ toggle_config = function () {
 };
 
 
-get_image = function () {
-	cmd = {method: "current_frame"};
-	fetch("/camera/", {
-		method: "POST", body: JSON.stringify(cmd),
-		headers: {"Content-type": "application/json"},
-	}).then((response) => {
-		if (response.status !== 200) console.log({response_error: response});
-		response.json().then((data) => {
-			if (data.type == "error") {
-				console.log({data_error: data.error});
-			} else {
-				new_image(data.result);
-			};
-		});
-	});
-};
-
-
 new_image = function (image) {
 	document.getElementById("video_frame").src = "data:image/jpeg;base64, " + image;
 };
 
 
-/*
-get_state = function () {
-	// TODO add check for state id
-	cmd = {
-		method: "get_state",
-	};
-	fetch("/backend/", {
-		method: "POST", body: JSON.stringify(cmd),
-		headers: {"Content-type": "application/json"},
-	}).then((response) => {
-		if (response.status !== 200) console.log({response_error: response});
-		response.json().then((data) => {
-			if (data.type == "error") {
-				console.log({data_error: data.error});
-			} else {
-				new_state(data.result);
-			};
-		});
-	});
+get_image = function () {
+	call_method("current_frame", "/camera/", new_image);
 };
 
-
-new_state = function (state) {
-	document.getElementById("ticks_label").innerHTML = "" + state.ticks;
-	document.getElementById("rpm_label").innerHTML = "" + state.motor.rpm.toFixed(2);
-	document.getElementById("radius_label").innerHTML = "" + state.spool.radius.toFixed(4);
-	document.getElementById("err_label").innerHTML = "" + state.pid.err.toFixed(4);
-	document.getElementById("found_label").innerHTML = "" + state.tracker.found;
-	if (state.tracker.found) {
-		x = "" + state.tracker.x.toFixed(4);
-		y = "" + state.tracker.y.toFixed(4);
-		angle = "" + state.tracker.angle.toFixed(4);
-	} else {
-		x = "?";
-		y = "?";
-		angle = "?";
-	};
-	document.getElementById("x_label").innerHTML = x;
-	document.getElementById("y_label").innerHTML = y;
-	document.getElementById("angle_label").innerHTML = angle;
-	if (state.frame_b64 !== undefined)
-		document.getElementById("video_frame").src = "data:image/jpeg;base64, " + state.frame_b64;
-};
-
-
-grab_background = function () {
-	cmd = {
-		method: "grab_background",
-	};
-	fetch("/backend/", {
-		method: "POST", body: JSON.stringify(cmd),
-		headers: {"Content-type": "application/json"},
-	}).then((response) => {
-		if (response.status !== 200) console.log({response_error: response});
-		response.json().then((data) => {
-			if (data.type == "error") console.log({data_error: data.error});
-		});
-	});
-};
-
-slider_changed = function () {
-	cfg = config_editor.get();
-	cfg.control.rpm = Number(this.value);
-	config_editor.update(cfg);
-	set_config();
-};
-*/
 
 window.onload = function () {
 	config_editor = new JSONEditor(
@@ -160,5 +70,5 @@ window.onload = function () {
 	// fetch config
 	get_config();
 	// repeatedly fetch image
-	image_poll_timer = setInterval(get_image, 300);
+	image_poll_timer = setInterval(get_image, 1000);
 };
