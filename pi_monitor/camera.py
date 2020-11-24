@@ -12,7 +12,6 @@ import datetime
 import io
 import logging
 import os
-import re
 import socket
 import tempfile
 import threading
@@ -33,7 +32,8 @@ from . import config
 default_config = {
     'stream_resolution': (320, 240),  # stream/current_frame resolution
     'record': False,  # start/stop recording
-    'filename': '%h_%d_%t_%i.h264',  # see get_next_filename for formatting
+    # see get_next_filename for formatting
+    'filename': '{host}_{date}_{time}_{index}.h264',
     'split_duration_ms': 0,  # split video every N ms
     'duration_ms': 1000 * 60 * 60,  # or 0 for continuous recording
     'settings': {},  # direct camera settings
@@ -159,21 +159,12 @@ class CameraThread(threading.Thread):
             # %i : filename index
             dt = datetime.datetime.now()
             tokens = {
-                '%[0-9]*i': self.filename_index,
-                '%h': hostname,
-                '%d': dt.strftime('%y%m%d'),
-                '%t': dt.strftime('%H%M%S'),
+                'index': self.filename_index,
+                'host': hostname,
+                'date': dt.strftime('%y%m%d'),
+                'time': dt.strftime('%H%M%S'),
             }
-            fn = self.cfg['filename']
-            for token in tokens:
-                pattern = re.compile(token)
-                value = tokens[token]
-                while pos := pattern.search(fn):
-                    try:
-                        svalue = fn[pos.start():pos.end()] % value
-                    except ValueError:
-                        svalue = value
-                    fn = fn[:pos.start()] + svalue + fn[pos.end():]
+            fn = self.cfg['filename'].format(**tokens)
             self.filename_index += 1
             self.filename = os.path.join(self.cfg['video_directory'], fn)
 
@@ -255,7 +246,7 @@ def test():
 
     cfg = cam.get_config()
     ncfg = copy.deepcopy(default_config)
-    ncfg['filename'] = '%i_%i.h264'
+    ncfg['filename'] = '{index}_{index}.h264'
     ncfg['video_directory'] = ''
     cam.set_config(ncfg, update=False)
     # check that config updates
@@ -268,7 +259,7 @@ def test():
     for tfn in ('0_0.h264', '1_1.h264'):
         fn = cam.next_filename()
         assert fn == tfn, f"{fn} != {tfn}"
-    cam.set_config({"filename": "%04i_%02i.h264"}, update=True)
+    cam.set_config({"filename": "{index:04d}_{index:02d}.h264"}, update=True)
     for tfn in ('0002_02.h264', '0003_03.h264'):
         fn = cam.next_filename()
         assert fn == tfn, f"{fn} != {tfn}"
@@ -301,7 +292,7 @@ def test():
                 'duration_ms': 1000,
                 'split_duration_ms': 200,
                 'timestamp_period_ms': 100,
-                'filename': '%h_%d_%t_%i.h264',
+                'filename': '{host}_{date}_{time}_{index}.h264',
                 'record': True},
             update=True)
         time.sleep(0.5)
