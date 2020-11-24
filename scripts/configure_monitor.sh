@@ -21,8 +21,10 @@ rsync -tu --rsync-path="mkdir -p /home/pi/.ssh/ && rsync" ~/.ssh/id_rsa.pub $WOR
 TZ=`cat /etc/timezone`
 ssh $WORKER sudo timedatectl set-timezone $TZ
 
-# TODO setup systemd service
-
 # set date on worker
 DS=`date -I"seconds"`
 ssh $WORKER sudo date --set=$DS
+
+# setup worker code to pull from queen
+# enable worker code
+# TODO setup systemd service
