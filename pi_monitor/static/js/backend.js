@@ -36,7 +36,7 @@ get_config = function (cb) {
 
 set_config = function () {
 	cfg = config_editor.get();
-	call_method("set_config", undefined, undefined, function (result) {
+	call_method("set_config", [cfg, ], undefined, function (result) {
 		document.getElementById("config").style.backgroundColor = "";
 	}, "/camera/");
 };
