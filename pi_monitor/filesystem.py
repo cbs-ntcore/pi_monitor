@@ -39,8 +39,9 @@ class FileSystem:
         return avail
 
     def get_filenames(self, directory):
-        fns = [os.path.splitext(fn) for fn in os.listdir(directory)]
-        return fns
+        return os.listdir(directory)
+        #fns = [os.path.splitext(fn) for fn in os.listdir(directory)]
+        #return fns
 
     def is_conversion_running(self):
         if self.conversion_process is None:
@@ -60,8 +61,9 @@ class FileSystem:
             raise Exception("Only 1 conversion allowed at a time")
 
         # start conversion
-        self.conversion_process = subprocess.Popen(
-            build_conversion_command(filename))
+        cmd = build_conversion_command(filename)
+        logging.debug(f"convert_video: {cmd}")
+        self.conversion_process = subprocess.Popen(cmd.split())
 
         # check conversion is running
         return self.is_conversion_running()
