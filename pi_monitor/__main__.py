@@ -8,6 +8,7 @@ import os
 import sys
 
 from . import camera
+from . import monitor
 
 
 if os.environ.get('PM_DEBUG', 0):
@@ -16,12 +17,16 @@ if os.environ.get('PM_DEBUG', 0):
 
 
 if __name__ == '__main__':
-    node = 'camera'
+    node = 'monitor'
     if len(sys.argv) > 1:
         node = sys.argv[1]
 
     if node == 'camera':
         camera.run()
+    elif node == 'test':
+        camera.test()
+    elif node == 'monitor':
+        monitor.run()
     elif node == 'control':
         raise NotImplementedError(f"Node {node} not implemented")
     else:

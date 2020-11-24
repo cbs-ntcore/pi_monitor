@@ -57,6 +57,10 @@ class CameraThread(threading.Thread):
         self.lock = threading.Lock()
         self.cfg = config.load(config_filename, default_config)
 
+    def is_recording(self):
+        with self.lock:
+            return self.record_start is not None
+
     def run(self):
         self.running = True
         self.cam = PiCamera()
@@ -98,7 +102,7 @@ class CameraThread(threading.Thread):
             self.running = False
         self.join()
 
-    def set_config(self, cfg, update=False):
+    def set_config(self, cfg, update=False, save=False):
         # TODO option to save config to disk
         delta = {}
         with self.lock:
@@ -161,16 +165,27 @@ class CameraThread(threading.Thread):
             # TODO check extension
             self.filename_index += 1
             self.filename = os.path.join(self.cfg['video_directory'], fn)
+
+            # make directory if it doesn't exist
+            directory = os.path.dirname(self.filename)
+            if not os.path.exists(directory):
+                logging.debug(f"Making directory {directory}")
+                os.makedirs(directory)
             return self.filename
 
     def _write_timestamp(self, t=None):
-        fn = os.path.splitext(self.filename)[0] + '.txt'
         frame = self.cam.frame
+        if frame.timestamp is None:
+            # sometimes timestamp will be None
+            # return without writing timestamp to allow for retry
+            return False
+        fn = os.path.splitext(self.filename)[0] + '.txt'
         with open(fn, 'a') as f:
             f.write("{},{}\n".format(frame.index, frame.timestamp))
         if t is None:
             t = time.monotonic()
         self.last_timestamp = t
+        return True
 
     def start_recording(self):
         fn = self.next_filename()
@@ -178,9 +193,14 @@ class CameraThread(threading.Thread):
             self.cam.start_recording(fn, 'h264', inline_headers=True)
             self.record_start = time.monotonic()
             self.last_split = self.record_start
-            if self.cfg['timestamp_period_ms'] != 0:
-                self._write_timestamp()
             self.cfg['record'] = True
+            if self.cfg['timestamp_period_ms'] != 0:
+                retries = 0
+                while not self._write_timestamp():
+                    self.cam.wait_recording(0.001)
+                    retries += 1
+                    if retries > 100:
+                        raise Exception("Failed to write frame timestamp")
 
     def split_recording(self):
         fn = self.next_filename()
@@ -192,6 +212,15 @@ class CameraThread(threading.Thread):
         with self.lock:
             if self.record_start is None:
                 return
+            if self.cfg['timestamp_period_ms'] != 0:
+                retries = 0
+                self._write_timestamp()
+                while not self._write_timestamp():
+                    self.cam.wait_recording(0.001)
+                    retries += 1
+                    if retries > 10:
+                        logging.error("Failed to write last timestamp")
+                        break
             self.cam.stop_recording()
             self.record_start = None
             self.last_split = None

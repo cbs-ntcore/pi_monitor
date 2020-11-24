@@ -24,10 +24,11 @@ call_method = function (method, endpoint, callback) {
 
 get_config = function (cb, endpoint) {
 	callback = function (result) {
+		config_editor.set(result);
 		document.getElementById("config").style.backgroundColor = "";
 		if (cb !== undefined) cb(result);
 	};
-	call_method("get_config", endpoint, cb);
+	call_method("get_config", endpoint, callback);
 };
 
 
@@ -64,11 +65,25 @@ get_image = function () {
 };
 
 
+stop_streaming = function () {
+	if (image_poll_timer === undefined) return;
+	clearInterval(image_poll_timer);
+	image_poll_timer = undefined;
+};
+
+
+start_streaming = function (interval) {
+	if (image_poll_timer !== undefined) stop_streaming();
+	if (interval === undefined) interval = 1000;
+	image_poll_timer = setInterval(get_image, interval);
+};
+
+
 window.onload = function () {
 	config_editor = new JSONEditor(
 		document.getElementById("config"), {onChange: config_modified});
 	// fetch config
 	get_config();
 	// repeatedly fetch image
-	image_poll_timer = setInterval(get_image, 1000);
+	start_streaming();
 };
