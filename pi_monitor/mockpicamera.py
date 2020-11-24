@@ -1,6 +1,7 @@
 import time
 
 import PIL.Image
+import PIL.ImageDraw
 
 
 def record_time(func):
@@ -32,6 +33,7 @@ class PiCamera:
     def __init__(self):
         self.calls = {}
         self.frame = Frame()
+        self.frame_count = 0
 
     @record_time
     def wait_recording(self, *args, **kwargs):
@@ -52,7 +54,16 @@ class PiCamera:
     @record_time
     def capture(self, f, *args, **kwargs):
         resize = kwargs.get('resize', (320, 240))
+
         # make jpeg of resize size
-        self.frame = PIL.Image.new('RGB', resize)
+        frame = PIL.Image.new('RGB', resize)
+        
+        # draw something on the image
+        draw = PIL.ImageDraw.Draw(frame)
+        draw.text(
+            (20, 20), "Test: {:04d}".format(self.frame_count),
+            fill=(255, 255, 255))
+        self.frame_count += 1
+
         # write to f
-        self.frame.save(f)
+        frame.save(f, 'JPEG')

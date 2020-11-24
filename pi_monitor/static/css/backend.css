@@ -1,0 +1,22 @@
+.config_div {
+    right: 0%;
+    position: absolute;
+}
+
+.config_toggle {
+    width: 21px;
+    height: 21px;
+}
+
+.config_toggle img {
+    width: inherit;
+    height: inherit;
+}
+
+.config_editor {
+    right: 0%;
+    top: 30px;
+    position: absolute;
+    background-color: white;
+    z-index: 10;
+}

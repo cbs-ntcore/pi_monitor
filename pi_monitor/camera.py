@@ -99,6 +99,7 @@ class CameraThread(threading.Thread):
         self.join()
 
     def set_config(self, cfg, update=False):
+        # TODO option to save config to disk
         delta = {}
         with self.lock:
             pcfg = copy.deepcopy(self.cfg)
@@ -136,7 +137,7 @@ class CameraThread(threading.Thread):
             self.cam.capture(
                 f, 'jpeg', use_video_port=True, resize=self.cfg['stream_resolution'])
         f.seek(0)
-        return f.read()
+        return base64.b64encode(f.read()).decode('ascii')
 
     def next_filename(self):
         with self.lock:
