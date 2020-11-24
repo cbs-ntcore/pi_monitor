@@ -83,7 +83,7 @@ def register(*args, **kwargs):
     ObjectHTTPRequestHandler.register(*args, **kwargs)
 
 
-def run_forever(open_browser=True, host=None, port=8000):
+def run_forever(open_browser=False, host=None, port=8000):
     # expects that some object has already been registered
     if len(ObjectHTTPRequestHandler.objects) == 0:
         logging.warning("No objects registered prior to serving")
