@@ -59,6 +59,10 @@ class CameraThread(threading.Thread):
         self.lock = threading.Lock()
         self.cfg = config.load(config_filename, default_config)
 
+    def static_directory(self):
+        with self.lock:
+            return self.cfg['video_directory']
+
     def is_recording(self):
         with self.lock:
             return self.record_start is not None

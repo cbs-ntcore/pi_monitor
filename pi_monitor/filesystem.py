@@ -22,6 +22,8 @@ def build_conversion_command(src, dst=None):
         raise FileExistsError(f"{src} and {dst} cannot be equal")
     if not os.path.exists(os.path.dirname(dst)):
         os.makedirs(os.path.dirname(dst))
+    if os.path.exists(dst):
+        raise FileExistsError(f"{dst} exists, refusing to overwrite")
     return cmd_template.format(src=src, dst=dst)
 
 

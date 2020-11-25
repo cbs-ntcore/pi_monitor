@@ -154,7 +154,12 @@ list_filenames = function(filenames, directory) {
 			ext = filename.substr(pi + 1);
 		};
 		li = document.createElement("li");
-		li.appendChild(document.createTextNode(filename));
+		link = document.createElement("a");
+		// link to download file
+		link.href = "/camera/" + filename;
+		link.text = filename;
+		li.appendChild(link)
+		//li.appendChild(document.createTextNode(filename));
 		if (ext == "h264") {
 			// add convert buttons extension for h264 files
 			btn = document.createElement("button");
@@ -169,8 +174,7 @@ list_filenames = function(filenames, directory) {
 		// add download buttons for all files
 		btn = document.createElement("button");
 		btn.textContent = "Download";
-		// TODO download file
-		li.appendChild(btn);
+		//li.appendChild(btn);
 		// add delete files (with confirm) for all files
 		if (document.getElementById("can_remove").checked) {
 			btn = document.createElement("button");
@@ -225,6 +229,7 @@ get_state = function () {
 		if (result) {
 			el.classList.add("enabled");
 			el.innerHTML = "Conversion Active";
+			el.style.color = "#ff0000";
 		} else {
 			el.classList.remove("enabled");
 			el.innerHTML = "Conversion Idle";

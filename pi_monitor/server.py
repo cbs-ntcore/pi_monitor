@@ -50,6 +50,20 @@ class ObjectHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=static_directory, **kwargs)
 
+    def do_GET(self):
+        directory = static_directory
+        for obj_re in self.objects:
+            if obj_re.match(self.path):
+                obj = self.objects[obj_re]
+                if hasattr(obj, 'static_directory'):
+                    directory = self.objects[obj_re].static_directory()
+                    # strip obj_re from path
+                    # TODO watch out for greedy patterns
+                    self.path = re.sub(obj_re, '/', self.path)
+                    break
+        self.directory = directory
+        return super().do_GET()
+
     @classmethod
     def register(cls, obj, path_re):
         if not isinstance(path_re, re.Pattern):

@@ -10,10 +10,10 @@ from . import sysctl
 
 def run(*args, **kwargs):
     backend.register(
-        camera.CameraThread, r'^/camera/.*',
+        camera.CameraThread, r'^/camera/.??',
         init=lambda o: o.start(), deinit=lambda o: o.stop())
     backend.register(
-        sysctl.SystemControl, r'^/system/.*')
+        sysctl.SystemControl, r'^/system/.??')
     backend.register(
-        filesystem.FileSystem, r'^/filesystem/.*')
+        filesystem.FileSystem, r'^/filesystem/.??')
     backend.serve(*args, **kwargs)
