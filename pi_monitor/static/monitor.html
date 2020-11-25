@@ -25,12 +25,17 @@
 			<span>Space on disk:<span id="disk_space">??</span></span>
 		</div>
 		<img id="video_frame" src="" width=320 height=240></img>
-		<!-- TODO videos -->
-		<!-- TODO get/convert/delete videos [and other files] -->
-		<!-- TODO recent/current error message(s) -->
+		<div>
+			<input type="checkbox" id="can_remove" name="can_remove" onclick="get_state()"/>
+			<label for="can_remove">Allow removal</label><br />
+			Files:
+			<ul id="filename_list"></ul>
+		</div>
+		<hr />
 		<div>
 			Errors:
 			<ul id="error_list"></ul>
 		</div>
+		<button id="shutdown_btn" onclick="shutdown_system()">Shutdown</button>
     </body>
 </html>

@@ -69,7 +69,8 @@ class FileSystem:
         return self.is_conversion_running()
 
     def get_file(self, filename):
+        # TODO
         pass
 
     def delete_file(self, filename):
-        pass
+        os.remove(filename)

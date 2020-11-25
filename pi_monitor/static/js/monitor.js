@@ -1,6 +1,7 @@
 var config_editor = null;
 var image_poll_timer = null;
 var state_poll_timer = null;
+var state_poll_interval = 60000;
 
 
 report_error = function (msg, data) {
@@ -30,8 +31,6 @@ call_method = function (method, args, kwargs, callback, endpoint) {
 		if (response.status !== 200) report_error("response_error", response);
 		response.json().then((data) => {
 			if (data.type == "error") {
-				// TODO pipe errors to page
-				//console.log({data_error: data.error});
 				report_error("data_error", data.error);
 			} else {
 				if (callback !== undefined)
@@ -55,7 +54,7 @@ get_config = function (cb) {
 			el.innerHTML = "Start Record";
 		};
 		if (cb !== undefined) cb(result);
-		get_state();  // TODO attach to timer
+		get_state();
 	};
 	call_method("get_config", undefined, undefined, callback, "/camera/");
 };
@@ -66,7 +65,7 @@ set_config = function (save) {
 	cfg = config_editor.get();
 	call_method("set_config", [cfg, ], {save: save}, function (result) {
 		document.getElementById("config").classList.remove("hot");
-		get_state();  // TODO attach to timer
+		get_state();
 	}, "/camera/");
 };
 
@@ -136,7 +135,67 @@ toggle_recording = function () {
 };
 
 
+list_filenames = function(filenames, directory) {
+	ul = document.getElementById("filename_list");
+
+	// remove all current filenames
+	while (ul.firstChild) {
+		ul.removeChild(ul.firstChild);
+	};
+
+	// sort filenames
+	filenames.sort();
+	for (let filename of filenames) {
+		// color code by extension
+		pi = filename.lastIndexOf('.')
+		if (pi == -1) {
+			ext = "";
+		} else {
+			ext = filename.substr(pi + 1);
+		};
+		li = document.createElement("li");
+		li.appendChild(document.createTextNode(filename));
+		if (ext == "h264") {
+			// add convert buttons extension for h264 files
+			btn = document.createElement("button");
+			btn.textContent = "Convert";
+			btn.onclick = function () {
+				call_method(
+					"convert_video", [directory + "/" + filename],
+					undefined, undefined, "/filesystem/");
+			};
+			li.appendChild(btn);
+		};
+		// add download buttons for all files
+		btn = document.createElement("button");
+		btn.textContent = "Download";
+		// TODO download file
+		li.appendChild(btn);
+		// add delete files (with confirm) for all files
+		if (document.getElementById("can_remove").checked) {
+			btn = document.createElement("button");
+			btn.textContent = "Remove";
+			btn.onclick = function () {
+				call_method(
+					"delete_file", [directory + "/" + filename], undefined,
+					get_state, "/filesystem/");
+			};
+			btn.classList.add("hot");
+			li.appendChild(btn);
+		};
+		ul.appendChild(li);
+	};
+};
+
+
 get_state = function () {
+	// reset state timer
+	if (state_poll_interval != 0) {
+		if (state_poll_timer !== undefined) {
+			clearTimeout(state_poll_timer);
+		};
+		state_poll_timer = setTimeout(get_state, state_poll_interval);
+	};
 	cfg = config_editor.get();  // TODO what if config editor is open?
 	directory = cfg['video_directory'];
 
@@ -144,15 +203,23 @@ get_state = function () {
 	call_method("get_disk_space", [directory, ], undefined, function (result) {
 		el = document.getElementById("disk_space");
 		el.innerHTML = result;
-		// TODO color based on amount left
+		// color based on amount left
+		zeros = "000"
+		for (unit of ["K", "M", "G", "T"]) {
+			result = result.replace(unit, zeros);
+			zeros += "000";
+		}
+		bytes = Number(result) / 1000000;  // MB
+		if (bytes < 500) {
+			el.style.color = "#ff0000";
+		};
 	}, "/filesystem/");
 
 	// videos
 	call_method("get_filenames", [directory, ], undefined, function (result) {
-		// list of filenames all in directory
+		list_filenames(result, directory);
 	}, "/filesystem/");
 
-	// TODO also list conversion running?
 	call_method("is_conversion_running", undefined, undefined, function (result) {
 		el = document.getElementById("conversion_indicator");
 		if (result) {
@@ -164,6 +231,11 @@ get_state = function () {
 		};
 	}, "/filesystem/");
 };
+
+
+shutdown_system = function () {
+	call_method("shutdown", undefined, undefined, undefined, "/system/");
+}
 
 
 window.onload = function () {
