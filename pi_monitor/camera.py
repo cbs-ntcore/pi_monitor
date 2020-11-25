@@ -31,6 +31,7 @@ from . import config
 
 default_config = {
     'stream_resolution': (320, 240),  # stream/current_frame resolution
+    'stream_period': 1000,  # update 'stream' image every N ms
     'record': False,  # start/stop recording
     # see get_next_filename for formatting
     'filename': '{host}_{date}_{time}_{index}.h264',
