@@ -57,11 +57,13 @@ class SettingConverter:
             self.check_limit = lambda v, limit=limit: v in limit
         elif isinstance(limit, (tuple, list)):
             assert len(limit) == 2, f"SettingConverter limit[{limit}] not 2 length"
-            self.check_limit = lambda v, low=limit[0], high=limi[1]: (v >=low) and (v <= high)
+            self.check_limit = lambda v, low=limit[0], high=limit[1]: (v >=low) and (v <= high)
+        self.limit = limit
+        self.vtype = vtype
 
     def to_picamera(self, value):
         value = self.force_type(value)
-        if self.check_limit(value):
+        if not self.check_limit(value):
             raise ValueError(
                 "SettingConverter: value {} out of limit {}".format(
                     value, self.limit))
@@ -86,35 +88,36 @@ class FractionConverter:
 all_settings = {
     #'analog_gain',  # fraction:  read only
     #'awb_gains',  # (fraction, fraction): color adjustment
-    'awb_mode': SettingsConverter(),  # str: should be in AWB_MODES
-    'brightness': SettingsConverter(vtype=int, limit=(0, 100)),  # int: [0-100]
-    'clock_mode': SettingsConverter(),  # str: must be in CLOCK_MODES
-    'contrast': SettingsConverter(vtype=int, limit=(-100, 100)),  # int: [-100-100]
+    'awb_mode': SettingConverter(),  # str: should be in AWB_MODES
+    'brightness': SettingConverter(vtype=int, limit=(0, 100)),  # int: [0-100]
+    'clock_mode': SettingConverter(),  # str: must be in CLOCK_MODES
+    'contrast': SettingConverter(vtype=int, limit=(-100, 100)),  # int: [-100-100]
     #'crop',  # (float, float, float, float) {depreciated, use zoom}
-    'digital_gain': FractionConverter(),  # fraction
-    'drc_strength': SettingsConverter(),  # str: must be in DRC_STRENGTHS
+    #'digital_gain': FractionConverter(),  # fraction
+    'drc_strength': SettingConverter(),  # str: must be in DRC_STRENGTHS
     #'exif_tags',  # dict: only used in jpeg saving
-    'exposure_compensation': SettingsConverter(vtype=int, limit=(-25, 25)),  # int: [-25-25]
-    'exposure_mode': SettingsConverter(),  # str: must be in EXPOSURE_MODES
-    'flash_mode': SettingsConverter(),  # str: must be in FLASH_MODES
+    'exposure_compensation': SettingConverter(vtype=int, limit=(-25, 25)),  # int: [-25-25]
+    'exposure_mode': SettingConverter(),  # str: must be in EXPOSURE_MODES
+    'exposure_speed': FractionConverter(),  # TODO READ ONLY
+    'flash_mode': SettingConverter(),  # str: must be in FLASH_MODES
     'framerate': FractionConverter(),  # fraction: target framerate
     #'framerate_delta',  # fraction: fine tune framerate [reset when framerate set]
     #'framerate_range',  # (fraction, fraction): allow framerate to drift over range
-    'hflip': SettingsConverter(vtype=bool),  # bool
+    'hflip': SettingConverter(vtype=bool),  # bool
     #'image_denoise',  # bool only used for image capture
-    'iso': SettingsConverter(vtype=int, limit=(0, 1600)),  # int: [0-1600] 0=auto
-    'meter_mode': SettingsConverter(),  # str: must be in METER_MODES
-    'resolution': SettingsConverter(),  # (int, int) or str: must not be recording when set
+    'iso': SettingConverter(vtype=int, limit=(0, 1600)),  # int: [0-1600] 0=auto
+    'meter_mode': SettingConverter(),  # str: must be in METER_MODES
+    'resolution': SettingConverter(),  # (int, int) or str: must not be recording when set
     #'revision',  # str?
-    'rotation': SettingsConverter(limit={0, 90, 180, 270}),  # int: must be in [0, 90, 180, 270]
-    'saturation': SettingsConverter(limit=(-100, 100)),  # int: [-100-100]
-    'sensor_mode': SettingsConverter(vtype=int),  # int: 0 = auto
-    'sharpness': SettingsConverter(vtype=int, limit=(-100, 100)),  # int: [-100-100]
-    'shutter_speed': SettingsConverter(vtype=int),  # int: 0=auto, other=microseconds
-    'vflip': SettingsConverter(vtype=bool),  # bool
-    'video_denoise': SettingsConverter(vtype=bool),  # bool
-    'video_stabilization': SettingsConverter(vtype=bool),  # bool
-    'zoom': SettingsConverter(),  # (float, float, float, float): (x, y, w, h) all 0-1
+    'rotation': SettingConverter(limit={0, 90, 180, 270}),  # int: must be in [0, 90, 180, 270]
+    'saturation': SettingConverter(limit=(-100, 100)),  # int: [-100-100]
+    'sensor_mode': SettingConverter(vtype=int),  # int: 0 = auto
+    'sharpness': SettingConverter(vtype=int, limit=(-100, 100)),  # int: [-100-100]
+    'shutter_speed': SettingConverter(vtype=int),  # int: 0=auto, other=microseconds
+    'vflip': SettingConverter(vtype=bool),  # bool
+    'video_denoise': SettingConverter(vtype=bool),  # bool
+    'video_stabilization': SettingConverter(vtype=bool),  # bool
+    'zoom': SettingConverter(),  # (float, float, float, float): (x, y, w, h) all 0-1
 }
 
 
