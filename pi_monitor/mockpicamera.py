@@ -31,6 +31,7 @@ class Frame:
 
 class PiCamera:
     def __init__(self):
+        self.__mock__ = True
         self.calls = {}
         self.frame = Frame()
         self.frame_count = 0

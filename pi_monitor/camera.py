@@ -42,6 +42,82 @@ default_config = {
     'timestamp_period_ms': 30000, # or 0 to disable
 }
 
+
+class SettingConverter:
+    def __init__(self, vtype=None, limit=None):
+        if vtype is None:
+            self.force_type = lambda v: v
+        else:
+            self.force_type = lambda v, vtype=vtype: vtype(v)
+        if limit is None:
+            self.check_limit = lambda v: True
+        elif isinstance(limit, dict):
+            self.check_limit = lambda v, limit=limit: (v in limit) or (v in limit.values())
+        elif isinstance(limit, set):
+            self.check_limit = lambda v, limit=limit: v in limit
+        elif isinstance(limit, (tuple, list)):
+            assert len(limit) == 2, f"SettingConverter limit[{limit}] not 2 length"
+            self.check_limit = lambda v, low=limit[0], high=limi[1]: (v >=low) and (v <= high)
+
+    def to_picamera(self, value):
+        value = self.force_type(value)
+        if self.check_limit(value):
+            raise ValueError(
+                "SettingConverter: value {} out of limit {}".format(
+                    value, self.limit))
+        return value
+    
+    def to_cfg(self, value):
+        return value
+
+
+class FractionConverter:
+    def to_picamera(self, value):
+        if len(value) == 1:
+            return (value, 1)
+        elif len(value) == 2:
+            return value
+        raise ValueError("Invalid Fraction value: {}".format(value))
+    
+    def to_cfg(self, value):
+        return [value.numerator, value.denominator]
+
+
+all_settings = {
+    #'analog_gain',  # fraction:  read only
+    #'awb_gains',  # (fraction, fraction): color adjustment
+    'awb_mode': SettingsConverter(),  # str: should be in AWB_MODES
+    'brightness': SettingsConverter(vtype=int, limit=(0, 100)),  # int: [0-100]
+    'clock_mode': SettingsConverter(),  # str: must be in CLOCK_MODES
+    'contrast': SettingsConverter(vtype=int, limit=(-100, 100)),  # int: [-100-100]
+    #'crop',  # (float, float, float, float) {depreciated, use zoom}
+    'digital_gain': FractionConverter(),  # fraction
+    'drc_strength': SettingsConverter(),  # str: must be in DRC_STRENGTHS
+    #'exif_tags',  # dict: only used in jpeg saving
+    'exposure_compensation': SettingsConverter(vtype=int, limit=(-25, 25)),  # int: [-25-25]
+    'exposure_mode': SettingsConverter(),  # str: must be in EXPOSURE_MODES
+    'flash_mode': SettingsConverter(),  # str: must be in FLASH_MODES
+    'framerate': FractionConverter(),  # fraction: target framerate
+    #'framerate_delta',  # fraction: fine tune framerate [reset when framerate set]
+    #'framerate_range',  # (fraction, fraction): allow framerate to drift over range
+    'hflip': SettingsConverter(vtype=bool),  # bool
+    #'image_denoise',  # bool only used for image capture
+    'iso': SettingsConverter(vtype=int, limit=(0, 1600)),  # int: [0-1600] 0=auto
+    'meter_mode': SettingsConverter(),  # str: must be in METER_MODES
+    'resolution': SettingsConverter(),  # (int, int) or str: must not be recording when set
+    #'revision',  # str?
+    'rotation': SettingsConverter(limit={0, 90, 180, 270}),  # int: must be in [0, 90, 180, 270]
+    'saturation': SettingsConverter(limit=(-100, 100)),  # int: [-100-100]
+    'sensor_mode': SettingsConverter(vtype=int),  # int: 0 = auto
+    'sharpness': SettingsConverter(vtype=int, limit=(-100, 100)),  # int: [-100-100]
+    'shutter_speed': SettingsConverter(vtype=int),  # int: 0=auto, other=microseconds
+    'vflip': SettingsConverter(vtype=bool),  # bool
+    'video_denoise': SettingsConverter(vtype=bool),  # bool
+    'video_stabilization': SettingsConverter(vtype=bool),  # bool
+    'zoom': SettingsConverter(),  # (float, float, float, float): (x, y, w, h) all 0-1
+}
+
+
 config_filename = os.path.expanduser('~/.pi_monitor/config/camera.json')
 hostname = socket.gethostname()
 
@@ -57,7 +133,9 @@ class CameraThread(threading.Thread):
         self.filename = None
 
         self.lock = threading.Lock()
+
         self.cfg = config.load(config_filename, default_config)
+        self.cfg['record'] = False
 
     def static_directory(self):
         with self.lock:
@@ -67,9 +145,48 @@ class CameraThread(threading.Thread):
         with self.lock:
             return self.record_start is not None
 
+    def _set_camera_settings(self):
+        # for camera 'settings' (fps etc) the default and loaded config might differ
+        # the loaded settings should take precedence. However, some settings might
+        # be rounded by the camera so after setting, get all the settings to have
+        # the correct current settings
+        settings = self.cfg['settings']
+        for k in settings:
+            if k in all_settings:
+                try:
+                    v = all_settings[k].to_picamera(settings[k])
+                except Exception as e:
+                    logging.error(f"Failed to convert setting to_picamera {k}: {e}")
+                    v = settings[k]
+            else:
+                v = settings[k]
+            try:
+                setattr(self.cam, k, v)
+            except Exception as e:
+                logging.error(f"Failed to set setting {k} to {v}: {e}")
+        for k in set(settings).union(set(all_settings)):
+            v = getattr(self.cam, k)
+            if k in all_settings:
+                try:
+                    v = all_settings[k].to_cfg(v)
+                except Exception as e:
+                    logging.error(f"Failed to convert setting to_cfg {k}: {e}")
+                    v = None  # set to safe, unknown value
+            settings[k] = v
+        self.cfg['settings'] = settings
+
     def run(self):
         self.running = True
         self.cam = PiCamera()
+        with self.lock:
+            self._set_camera_settings()
+            #for s in self.cfg['settings']:
+            #    setattr(self.cam, s, self.cfg['settings'][s])
+            ## fetch initial settings
+            #for s in all_settings:
+            #    if s in self.cfg['settings']:
+            #        continue
+            #    self.cfg['settings'][s] = getattr(self.cam, s)
         while self.running:
             action = 'wait'
             with self.lock:
@@ -127,8 +244,7 @@ class CameraThread(threading.Thread):
 
             if 'settings' in delta:
                 logging.debug("set_config: contains settings: {}".format(delta['settings']))
-                for k in delta['settings']:
-                    setattr(self.cam, k, delta['settings'][k])
+                self._set_camera_settings()
             if save:
                 to_save = copy.deepcopy(self.cfg)
 
