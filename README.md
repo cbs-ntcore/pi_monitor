@@ -168,3 +168,9 @@ Configure camera by adjusting settings in gear at top right of page
 Start/stop streaming by clicking button at top left (streaming during recording might cause video errors)
 See current files near bottom of page. Files can be downloaded, converted (to mp4) and removed (after checking 'Allow Removal' [this removal is **PERMANENT**])
 See current errors at bottom of page (refreshing the page clears these)
+
+If you'd like the code to start automatically on reboot add the following to your 
+crontab on the monitor Pi (run ```crontab -e``` to edit your crontab):
+```@reboot sleep 10 && cd /home/pi/r/cbs-ntcore/pi_monitor && python3 -m pi_monitor```
+This code will wait 10 seconds on startup (to allow the network to come up) and then 
+start the code.
