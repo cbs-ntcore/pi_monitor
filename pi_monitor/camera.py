@@ -182,7 +182,11 @@ class CameraThread(threading.Thread):
         self.running = True
         self.cam = PiCamera()
         with self.lock:
-            self._set_camera_settings()
+            try:
+                self._set_camera_settings()
+            except Exception as e:
+                # TODO how to handle this error? load defaults, reset config?
+                logging.error(f"Failed to set camera settings {e}")
             #for s in self.cfg['settings']:
             #    setattr(self.cam, s, self.cfg['settings'][s])
             ## fetch initial settings
