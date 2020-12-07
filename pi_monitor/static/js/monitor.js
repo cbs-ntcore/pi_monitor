@@ -1,7 +1,9 @@
 var config_editor = null;
 var image_poll_timer = null;
 var state_poll_timer = null;
-var state_poll_interval = 60000;
+var recording_state_poll_interval = 60000;
+var idle_state_poll_interval = 1000;
+var state_poll_interval = recording_state_poll_interval;
 
 
 report_error = function (msg, data) {
@@ -47,11 +49,13 @@ get_config = function (cb) {
 		document.getElementById("config").classList.remove("hot");
 		el = document.getElementById("record_btn");
 		if (result['record']) {
-			el.classList.add("hot");
+			el.classList.add("onair");
 			el.innerHTML = "Stop Record";
+			state_poll_interval = recording_state_poll_interval;
 		} else {
-			el.classList.remove("hot");
+			el.classList.remove("onair");
 			el.innerHTML = "Start Record";
+			state_poll_interval = idle_state_poll_interval;
 		};
 		if (cb !== undefined) cb(result);
 		get_state();
@@ -97,9 +101,10 @@ get_image = function () {
 
 
 stop_streaming = function () {
-	if (image_poll_timer === undefined) return;
-	clearInterval(image_poll_timer);
-	image_poll_timer = undefined;
+	if (image_poll_timer !== undefined) {
+		clearInterval(image_poll_timer);
+		image_poll_timer = undefined;
+	};
 	el = document.getElementById("stream_btn");
 	el.classList.remove("hot");
 	el.innerHTML = "Start Stream";
@@ -200,6 +205,7 @@ get_state = function () {
 		};
 		state_poll_timer = setTimeout(get_state, state_poll_interval);
 	};
+
 	cfg = config_editor.get();  // TODO what if config editor is open?
 	directory = cfg['video_directory'];
 
@@ -249,5 +255,5 @@ window.onload = function () {
 	// fetch config
 	get_config();
 	// repeatedly fetch image
-	start_streaming();
+	stop_streaming();
 };

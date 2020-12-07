@@ -98,7 +98,7 @@ all_settings = {
     #'exif_tags',  # dict: only used in jpeg saving
     'exposure_compensation': SettingConverter(vtype=int, limit=(-25, 25)),  # int: [-25-25]
     'exposure_mode': SettingConverter(),  # str: must be in EXPOSURE_MODES
-    'exposure_speed': FractionConverter(),  # TODO READ ONLY
+    #'exposure_speed': FractionConverter(),  # TODO READ ONLY
     'flash_mode': SettingConverter(),  # str: must be in FLASH_MODES
     'framerate': FractionConverter(),  # fraction: target framerate
     #'framerate_delta',  # fraction: fine tune framerate [reset when framerate set]

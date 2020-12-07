@@ -29,6 +29,10 @@ button {
     background-color: #ffaaaa;
 }
 
+.onair {
+    background-color: #aaffaa;
+}
+
 #conversion_indicator {
     width: 1em;
     height: 1em;
