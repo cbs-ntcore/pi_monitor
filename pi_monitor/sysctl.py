@@ -14,6 +14,9 @@ class SystemControl:
 
     def reboot(self):
         return subprocess.check_output("sudo reboot".split())
+
+    def restart_service(self):
+        return subprocess.check_output("sudo systemctl restart monitor".split())
     
     def set_date(self, datetime):
         """Use format from date -I"seconds" (example: 2020-08-25T16:32:15+01:00)"""

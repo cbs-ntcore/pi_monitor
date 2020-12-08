@@ -249,6 +249,11 @@ shutdown_system = function () {
 }
 
 
+restart_service = function () {
+	call_method("restart_service", undefined, undefined, undefined, "/system/");
+}
+
+
 window.onload = function () {
 	config_editor = new JSONEditor(
 		document.getElementById("config"), {onChange: config_modified});
