@@ -251,7 +251,8 @@ shutdown_system = function () {
 
 
 restart_service = function () {
-	call_method("restart_service", undefined, undefined, location.reload, "/system/");
+	call_method("restart_service", undefined, undefined, undefined, "/system/");
+	setTimeout(function() {location.reload()}, 1000);
 }
 
 

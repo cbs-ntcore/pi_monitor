@@ -169,16 +169,8 @@ Start/stop streaming by clicking button at top left (streaming during recording 
 See current files near bottom of page. Files can be downloaded, converted (to mp4) and removed (after checking 'Allow Removal' [this removal is **PERMANENT**])
 See current errors at bottom of page (refreshing the page clears these)
 
-If you'd like the code to start automatically on reboot you have two options.
-
-First, you can add the following to your crontab on the monitor Pi
-(run ```crontab -e``` to edit your crontab):
-```@reboot sleep 10 && cd /home/pi/r/cbs-ntcore/pi_monitor && python3 -m pi_monitor```
-This code will wait 10 seconds on startup (to allow the network to come up) and then 
-start the code.
-
-The second option is the enable the systemd service services/monitor.service by
-running:
+If you'd like the code to start automatically on reboot enable the systemd 
+service services/monitor.service by running:
 ```bash
 # link service to systemd system services directory
 sudo ln -s ~/r/cbs-ntcore/pi_monitor/services/monitor.service /etc/systemd/system/monitor.service
@@ -187,7 +179,7 @@ sudo systemctl enable monitor.service
 # start the service for this session
 sudo systemctl start monitor.service
 ```
-Using this option allows you to see log output and system status using the following:
+This allows you to see log output and system status using the following:
 ```bash
 # to see the current status of the service
 sudo systemctl status monitor.service
