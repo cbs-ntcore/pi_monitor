@@ -239,6 +239,7 @@ get_state = function () {
 		} else {
 			el.classList.remove("enabled");
 			el.innerHTML = "Conversion Idle";
+			el.style.color = "";
 		};
 	}, "/filesystem/");
 };
@@ -250,7 +251,7 @@ shutdown_system = function () {
 
 
 restart_service = function () {
-	call_method("restart_service", undefined, undefined, undefined, "/system/");
+	call_method("restart_service", undefined, undefined, location.reload, "/system/");
 }
 
 
