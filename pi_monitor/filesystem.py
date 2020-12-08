@@ -43,7 +43,7 @@ class FileSystem:
         self.conversion_process = None
 
     def get_disk_space(self, directory='/'):
-        return value_to_metric_prefix_string(psutil.disk_usage(directory).free)
+        return psutil.disk_usage(directory).free
 
     def get_filenames(self, directory):
         return os.listdir(directory)

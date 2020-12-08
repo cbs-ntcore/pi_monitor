@@ -212,17 +212,19 @@ get_state = function () {
 	// space left on disk
 	call_method("get_disk_space", [directory, ], undefined, function (result) {
 		el = document.getElementById("disk_space");
-		el.innerHTML = result;
-		// color based on amount left
-		zeros = "000"
-		for (unit of ["K", "M", "G", "T"]) {
-			result = result.replace(unit, zeros);
-			zeros += "000";
-		}
-		bytes = Number(result) / 1000000;  // MB
-		if (bytes < 500) {
+		if (result < 500000000) {
 			el.style.color = "#ff0000";
 		};
+		suffix = "";
+		for (unit of ["K", "M", "G", "T"]) {
+			if (result > 1000) {
+				result /= 1000;
+				suffix = unit;
+			} else {
+				break;
+			};
+		};
+		el.innerHTML = result.toFixed(2) + suffix;
 	}, "/filesystem/");
 
 	// videos
