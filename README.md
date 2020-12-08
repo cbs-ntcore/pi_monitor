@@ -180,10 +180,8 @@ start the code.
 The second option is the enable the systemd service services/monitor.service by
 running:
 ```bash
-# change to the pi_monitor/services directory
-cd ~/r/cbs-ntcore/pi_monitor/services
 # link service to systemd system services directory
-sudo ln -s monitor.service /etc/systemd/system/monitor.service
+sudo ln -s ~/r/cbs-ntcore/pi_monitor/services/monitor.service /etc/systemd/system/monitor.service
 # enable the service to automatically start on boot
 sudo systemctl enable monitor.service
 # start the service for this session
