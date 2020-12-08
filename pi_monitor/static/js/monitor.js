@@ -256,6 +256,14 @@ restart_service = function () {
 }
 
 
+convert_all_files = function () {
+	cfg = config_editor.get();  // TODO what if config editor is open?
+	call_method(
+		"convert_all_files", [cfg['video_directory'], ],
+		undefined, undefined, "/filesystem/");
+}
+
+
 window.onload = function () {
 	config_editor = new JSONEditor(
 		document.getElementById("config"), {onChange: config_modified});

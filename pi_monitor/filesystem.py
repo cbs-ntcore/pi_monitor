@@ -8,6 +8,10 @@ videos
 import logging
 import os
 import subprocess
+import threading
+import time
+
+import psutil
 
 
 cmd_template = "ffmpeg -i {src} -vcodec copy {dst}"
@@ -27,23 +31,75 @@ def build_conversion_command(src, dst=None):
     return cmd_template.format(src=src, dst=dst)
 
 
+def value_to_metric_prefix_string(value):
+    for (p, v) in (('T', 1E12), ('G', 1E9), ('M', 1E6), ('K', 1E3)):
+        if value >= v:
+            return "{:0.2f}{}".format(value / v, p)
+    return str(value)
+
+
 class FileSystem:
     def __init__(self):
         self.conversion_process = None
 
     def get_disk_space(self, directory='/'):
-        cmd = "df -h %s" % directory
-        output = subprocess.check_output(cmd, shell=True).decode('latin8')
-        lines = output.strip().split(os.linesep)
-        l = lines[-1]
-        ts = l.split()
-        space, used, avail, perc = ts[1], ts[2], ts[3], ts[4]
-        return avail
+        return value_to_metric_prefix_string(psutil.disk_usage(directory).free)
 
     def get_filenames(self, directory):
         return os.listdir(directory)
-        #fns = [os.path.splitext(fn) for fn in os.listdir(directory)]
-        #return fns
+
+    def get_open_files(self):
+        parent = psutil.Process()
+        while 'python' in parent.parent().name():
+            parent = parent.parent()
+        procs = [parent, ] + parent.children(recursive=True)
+        finfo = []
+        for p in procs:
+            for f in p.open_files():
+                finfo.append([f.path, p.pid, f.fd])
+        return finfo
+
+    def get_file_info(self, directory):
+        d = os.path.normpath(directory) + os.sep
+        open_files = {
+            os.path.relpath(fpath, d): fpid for (fpath, fpid, _)
+            in self.get_open_files()
+            if os.path.abspath(fpath).startswith(d)}
+        return [{
+            'name': fn,
+            'size': os.stat(os.path.join(directory, fn)).st_size,
+            'open': fn in open_files,
+            } for fn in os.listdir(directory)]
+
+    def get_files_to_convert(self, directory):
+        finfo = {i['name']: i for i in self.get_file_info(directory)}
+        to_convert = []
+        for fn in finfo:
+            root, ext = os.path.splitext(fn)
+            if ext == '.h264' and f'{root}.mp4' not in finfo:
+                to_convert.append(os.path.join(directory, fn))
+        return to_convert
+
+    def convert_all_files(self, directory):
+        if self.is_conversion_running():
+            # TODO setup conversion queue
+            raise Exception("Only 1 conversion allowed at a time")
+
+        # check if any files need conversion
+        to_convert = self.get_files_to_convert(directory)
+        print("to_convert {}".format(to_convert))
+        if not len(to_convert):
+            return
+
+        # setup thread to start and monitor conversion
+        def run_conversion(fns):
+            for fn in fns:
+                self.convert_video(fn)
+                while self.is_conversion_running():
+                    time.sleep(0.1)
+
+        thread = threading.Thread(target=run_conversion, args=(to_convert, ))
+        thread.start()
 
     def is_conversion_running(self):
         if self.conversion_process is None:
@@ -60,6 +116,7 @@ class FileSystem:
     def convert_video(self, filename):
         # check existing conversion is done
         if self.is_conversion_running():
+            # TODO setup conversion queue
             raise Exception("Only 1 conversion allowed at a time")
 
         # start conversion
@@ -69,10 +126,6 @@ class FileSystem:
 
         # check conversion is running
         return self.is_conversion_running()
-
-    def get_file(self, filename):
-        # TODO
-        pass
 
     def delete_file(self, filename):
         os.remove(filename)
