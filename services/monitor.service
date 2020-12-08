@@ -1,0 +1,16 @@
+[Unit]
+Description=pi_monitor monitor service
+After=network.target
+
+[Service]
+User=pi
+WorkingDirectory=/home/pi/r/cbs-ntcore/pi_monitor
+ExecStart=python3 -m pi_monitor
+RestartSec=60
+Restart=always
+StandardOutput=file:/home/pi/pi_monitor.out
+StandardError=file:/home/pi/pi_monitor.err
+#WatchdogSec=30
+
+[Install]
+WantedBy=multi-user.target
