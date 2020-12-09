@@ -8,6 +8,13 @@ date_string_re = re.compile(
     r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[\+\-][0-9]{2}:[0-9]{2}")
 
 
+def date_formatted_datetime():
+    dt = datetime.datetime.now(datetime.timezone.utc).astimezone(local_timezone)
+    s = dt.strftime('%Y-%m-%dT%H:%M:%S%z')
+    # add colon to match output/input of date -I"seconds"
+    return s[:-2] + ':' + s[-2:]
+
+
 class SystemControl:
     def shutdown(self):
         return subprocess.check_output("sudo shutdown -h now".split())
@@ -26,7 +33,4 @@ class SystemControl:
             f"sudo date --set={datetime}", shell=True).decode('ascii')
     
     def get_date(self):
-        dt = datetime.datetime.now(datetime.timezone.utc).astimezone(local_timezone)
-        s = dt.strftime('%Y-%m-%dT%H:%M:%S%z')
-        # add colon to match output/input of date -I"seconds"
-        return s[:-2] + ':' + s[-2:]
+        return date_formatted_datetime()

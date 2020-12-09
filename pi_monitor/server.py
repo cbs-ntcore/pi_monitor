@@ -9,6 +9,7 @@ import webbrowser
 
 script_path = os.path.abspath(__file__)
 static_directory = os.path.join(os.path.dirname(script_path), 'static')
+default_port = 8000
 
 
 def process_request(obj, request):
@@ -97,7 +98,7 @@ def register(*args, **kwargs):
     ObjectHTTPRequestHandler.register(*args, **kwargs)
 
 
-def run_forever(open_browser=False, host=None, port=8000):
+def run_forever(open_browser=False, host=None, port=default_port):
     # expects that some object has already been registered
     if len(ObjectHTTPRequestHandler.objects) == 0:
         logging.warning("No objects registered prior to serving")

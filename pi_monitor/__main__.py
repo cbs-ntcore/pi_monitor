@@ -8,6 +8,7 @@ import os
 import sys
 
 from . import camera
+from . import controller
 from . import monitor
 
 
@@ -27,7 +28,7 @@ if __name__ == '__main__':
         camera.test()
     elif node == 'monitor':
         monitor.run()
-    elif node == 'control':
-        raise NotImplementedError(f"Node {node} not implemented")
+    elif node == 'controller':
+        controller.run()
     else:
         raise Exception(f"Unknown node {node}")
