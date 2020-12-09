@@ -20,11 +20,28 @@ Features
 """
 
 import datetime
+import os
 
 import requests
 
+from . import backend
+from . import config
 from . import server
 from . import sysctl
+
+
+default_monitors = {
+    'monitors': [
+        '192.168.86.2.1',
+        # ('192.168.86.2.1', 8000),  # can also be (ip, port) tuple
+    ]
+}
+
+monitors_filename = os.path.expanduser('~/.pi_monitor/config/monitors.json')
+
+
+def ip_to_pattern(ip):
+    return r'^/monitor{}/.??'.format(ip.split('.')[-1])
 
 
 class MonitorConnection:
@@ -60,37 +77,44 @@ class MonitorConnection:
         self.call_method("set_date", "system", args=(dts, ))
 
     def current_frame(self):
-        self.call_method("current_frame", "camera")
+        return self.call_method("current_frame", "camera")
 
     def get_config(self):
-        self.call_method("get_config", "camera")
+        return self.call_method("get_config", "camera")
 
     def set_config(self, *args, **kwargs):
         self.call_method("set_config", "camera", args=args, kwargs=kwargs)
 
     def get_disk_space(self, *args, **kwargs):
-        self.call_method("get_disk_space", "filesystem", args=args, kwargs=kwargs)
+        return self.call_method("get_disk_space", "filesystem", args=args, kwargs=kwargs)
 
     # TODO get file info, get individual files [through static files]
 
 
 class Controller:
-    def __init__(self):
-        self.registered_monitors = set()
-        # TODO load previously connected monitors from file on disk
-
-    def add_monitor(self, ip, port=server.default_port):
-        # register new monitor to server with new endpoint
-        last_ip_digit = ip.split('.')[-1]
-        if last_ip_digit in self.registered_monitors:
-            return
-        backend.register(
-            MonitorConnection, r'^/monitor{}/.??'.format(last_ip_digit),
-            args=(ip, port))
-        self.registered_monitors.add(last_ip_digit)
-        # TODO a way to unregister?
+    def __init__(self, monitors):
+        self.monitors = monitors  # list of (ip, port)
+    
+    # TODO transfer files from monitor(s) to controller
 
 
 def run(*args, **kwargs):
-    backend.register(Controller, r'^/controller/.??')
+    # read list of monitors from config file
+    monitors_cfg = config.load(monitors_filename, default_monitors)
+    if 'monitors' not in monitors_cfg:
+        raise Exception(
+            f"Monitors list in {monitors_filename} missing 'monitors': {monitors_cfg}")
+    monitors = []
+    for m in monitors_cfg['monitors']:
+        if isinstance(m, str):
+            ip = m
+            port = server.default_port
+        else:
+            assert len(m) == 2
+            assert isinstance(m[0], str)
+            assert isinstance(m[1], int)
+            ip, port = m
+        monitors.append((ip, port))
+        backend.register(MonitorConnection, ip_to_pattern(ip), args=(ip, port))
+    backend.register(Controller, r'^/controller/.??', args=(monitors, ))
     backend.serve(*args, **kwargs)

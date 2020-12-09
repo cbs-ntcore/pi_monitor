@@ -32,9 +32,9 @@ class BackendManager(multiprocessing.managers.BaseManager):
             # make objects
             deinits = {}
             for name in cls.objects:
-                path_re, args, kwargs, init, deinit = cls.objects[name]
+                path_re, oargs, okwargs, init, deinit = cls.objects[name]
                 logging.debug(f"BackendManager: constructing {name}")
-                obj = getattr(mgr, name)(*args, **kwargs)
+                obj = getattr(mgr, name)(*oargs, **okwargs)
                 server.register(obj, path_re)
                 if init is not None:
                     logging.debug(f"BackendManager: init {name}")
