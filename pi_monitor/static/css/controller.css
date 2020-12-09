@@ -1,0 +1,27 @@
+button {
+    background-color: #eeeeee;
+}
+
+.hot {
+    background-color: #ffaaaa;
+}
+
+.onair {
+    background-color: #aaffaa;
+}
+
+.frame_div {
+    float: left;
+}
+
+.video_frame {
+    display: block;
+}
+
+.monitor_hr {
+    clear: both;
+}
+
+.monitor_contents {
+    display: block;
+}
