@@ -5,13 +5,22 @@ class Monitor {
 	constructor(ip, port) {
 		this.ip = ip;
 		this.port = port;
+		this.endpoint = "monitor" + ip.split(".")[3]
 		// add html elements from monitor_template
-		this.elements = document.getElementById("monitor_template").content.cloneNode(true);
+		let elements = document.getElementById("monitor_template").content.cloneNode(true);
 		// setup elements
-		this.elements.querySelector(".monitor_title").text = "Monitor IP: " + ip;
+		elements.querySelector(".monitor_div").id = ip + "_div";
+		elements.querySelector(".monitor_title").textContent = "Monitor IP: " + ip;
 		// TODO setup other elements
-		document.getElementById("monitors_div").appendChild(this.elements);
+		document.getElementById("monitors_div").appendChild(elements);
 		// TODO setup and enable state timer
+		this.element = document.getElementById(ip + "_div");
+	}
+
+	update_image() {
+		call_method("current_frame", undefined, undefined, (image) => {
+			this.element.querySelector('.video_frame').src = "data:image/jpeg;base64, " + image;
+		}, this.endpoint);
 	}
 }
 
@@ -55,7 +64,7 @@ call_method = function (method, args, kwargs, callback, endpoint) {
 setup_monitors = function (monitor_info) {
 	// monitors = [(ip, port), ...]
 	// for each monitor
-	for (let monitor_info of monitor_info) {
+	for (monitor_info of monitor_info) {
 		ip = monitor_info[0];
 		port = monitor_info[1];
 		monitors.push(new Monitor(ip, port));
@@ -64,5 +73,5 @@ setup_monitors = function (monitor_info) {
 
 window.onload = function () {
 	// get monitor info [(ip, port), ...]
-	call_method('get_monitors', undefined, undefined, setup_monitors, "/controller/");
+	call_method("get_monitors", undefined, undefined, setup_monitors, "/controller/");
 };
