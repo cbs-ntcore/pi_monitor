@@ -62,6 +62,7 @@ class MonitorConnection:
             msg['args'] = args
         if kwargs is not None:
             msg['kwargs'] = kwargs
+        print(url, msg)
         r = self.session.post(url, json=msg)
         if r.status_code != 200:
             raise Exception(
@@ -81,6 +82,16 @@ class MonitorConnection:
     def current_frame(self):
         return self.call_method("current_frame", "camera")
 
+    def start_recording(self):
+        return self.call_method(
+            "set_config", "camera",
+            args=({"record": True}, ), kwargs={"update": True})
+
+    def stop_recording(self):
+        return self.call_method(
+            "set_config", "camera",
+            args=({"record": False}, ), kwargs={"update": True})
+
     def get_config(self):
         return self.call_method("get_config", "camera")
 
@@ -90,7 +101,20 @@ class MonitorConnection:
     def get_disk_space(self, *args, **kwargs):
         return self.call_method("get_disk_space", "filesystem", args=args, kwargs=kwargs)
 
+    def is_conversion_running(self):
+        return self.call_method("is_conversion_running", "filesystem")
+
+    def get_state(self):
+        cfg = self.get_config()
+        bytes_free = self.get_disk_space(cfg['video_directory'])
+        return {
+            'recording': cfg['record'],
+            'disk_space': bytes_free,
+            'converting': self.is_conversion_running(),
+        }
+
     # TODO get file info, get individual files [through static files]
+
 
 
 class Controller:

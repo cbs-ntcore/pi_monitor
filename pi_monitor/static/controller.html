@@ -8,17 +8,27 @@
 		<link rel="stylesheet" type="text/css" href="css/jsoneditor.css" />
 		<link rel="stylesheet" type="text/css" href="css/monitor.css" />
 		-->
+		<link rel="stylesheet" type="text/css" href="css/controller.css" />
 		<script src="js/controller.js" type="text/javascript"></script>
     </head>
     <body>
 		<template id="monitor_template">
 			<div class="monitor_div">
-				<span class="monitor_title">Monitor IP: ? </span>
-				<span>Space on disk:<span class="disk_space">??</span></span>
+				<div class="frame_div">
+					<img class="video_frame" src="" width=320 height=240></img>
+				</div>
+				<div class="monitor_contents">
+					<span class="monitor_title">Monitor IP: ? </span>
+					<span>Space on disk:<span class="disk_space">??</span></span>
+					<span>State:<span class="state">??</span></span>
+					<br />
+					<button class="record_btn">?</button>
+					<!--<br />
+					<button class="stream_btn">?</button>-->
+				</div>
 				<br />
-				<img class="video_frame" src="" width=320 height=240></img>
 			</div>
-			<hr />
+			<hr class="monitor_hr"/>
 		</template>
 		<!--
 		<div class="config_div">
@@ -31,9 +41,9 @@
 		</div>
 		-->
 		<div>
-			<button id="stream_btn" onclick="toggle_streaming()">????? Stream</button>
-			<button id="record_btn" onclick="toggle_recording()">????? Record</button>
-			<span id="conversion_indicator">?</span>
+			<button id="stream_btn" onclick="toggle_streaming()">Start Streaming</button>
+			<button id="record_btn" onclick="toggle_recording()">?? Recording</button>
+			<!--<span id="conversion_indicator">?</span>-->
 		</div>
 		<!--
 		<div>
