@@ -62,7 +62,6 @@ class MonitorConnection:
             msg['args'] = args
         if kwargs is not None:
             msg['kwargs'] = kwargs
-        print(url, msg)
         r = self.session.post(url, json=msg)
         if r.status_code != 200:
             raise Exception(
