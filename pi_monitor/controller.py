@@ -20,6 +20,7 @@ Features
 """
 
 import datetime
+import logging
 import os
 
 import requests
@@ -32,8 +33,8 @@ from . import sysctl
 
 default_monitors = {
     'monitors': [
-        '192.168.86.2.1',
-        # ('192.168.86.2.1', 8000),  # can also be (ip, port) tuple
+        '192.168.2.1',
+        # ('192.168.2.1', 8000),  # can also be (ip, port) tuple
     ]
 }
 
@@ -46,6 +47,7 @@ def ip_to_pattern(ip):
 
 class MonitorConnection:
     def __init__(self, ip, port=server.default_port):
+        logging.debug(f"MonitorConnection __init__ for {ip}:{port}")
         self.ip = ip
         self.port = port
         self.session = requests.Session()
