@@ -98,6 +98,8 @@ class Controller:
         self.monitors = monitors  # list of (ip, port)
     
     # TODO transfer files from monitor(s) to controller
+    def get_monitors(self):
+        return self.monitors
 
 
 def run(*args, **kwargs):

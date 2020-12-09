@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+    <head>
+		<meta charset="utf-8"/>
+		<!--
+		<script src="js/jsoneditor.js" type="text/javascript"></script>
+		<script src="js/monitor.js" type="text/javascript"></script>
+		<link rel="stylesheet" type="text/css" href="css/jsoneditor.css" />
+		<link rel="stylesheet" type="text/css" href="css/monitor.css" />
+		-->
+		<script src="js/controller.js" type="text/javascript"></script>
+    </head>
+    <body>
+		<template id="monitor_template">
+			<div class="monitor_div">
+				<span class="monitor_title">Monitor IP: ? </span>
+				<span>Space on disk:<span class="disk_space">??</span></span>
+				<img class="video_frame" src="" width=320 height=240></img>
+			</div>
+		</template>
+		<!--
+		<div class="config_div">
+			<a id="toggle_config" class="config_toggle" onclick="toggle_config();">
+				<img src="css/img/gear.png"/></a>
+			<div id="config_editor" class="config_editor" hidden="true">
+				<button id="set_config" onclick="set_config(true)">Save</button>
+				<div id="config" class="jsoneditor" style="width: 635px; height: 400px;"></div>
+			</div>
+		</div>
+		-->
+		<div>
+			<button id="stream_btn" onclick="toggle_streaming()">????? Stream</button>
+			<button id="record_btn" onclick="toggle_recording()">????? Record</button>
+			<span id="conversion_indicator">?</span>
+		</div>
+		<!--
+		<div>
+			<span>Space on disk:<span id="disk_space">??</span></span>
+		</div>
+		<img id="video_frame" src="" width=320 height=240></img>
+		<div>
+			<input type="checkbox" id="can_remove" name="can_remove" onclick="get_state()"/>
+			<label for="can_remove">Allow removal</label><br />
+			Files:
+			<ul id="filename_list"></ul>
+			<button id="convert_btn" onclick="convert_all_files()">Convert All</button>
+		</div>
+		-->
+		<div id="monitors_div"></div>
+		<hr />
+		<div>
+			Errors:
+			<ul id="error_list"></ul>
+		</div>
+		<!--
+		<button id="shutdown_btn" onclick="shutdown_system()">Shutdown</button>
+		<button id="restart_btn" onclick="restart_service()">Restart Service</button>
+		-->
+    </body>
+</html>
