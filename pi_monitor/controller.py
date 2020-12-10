@@ -164,22 +164,24 @@ class MonitorConnection:
             fns.append(name)
         cmd = [
             "rsync",
+            "-u",
             "--files-from=-",
             f"{self.ip}:{source_directory}",
             f"{destination_directory}",
         ]
         self.transfer_process = subprocess.Popen(
-            cmd, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+            cmd, stdin=subprocess.PIPE)
         #self.transfer_process.communicate(input="\n".join(fns))
-        self.transfer_process.stdin.write("\n".join(fns).encode())
+        #self.transfer_process.stdin.write("\n".join(fns).encode())
 
         # setup thread to watch process until it finishes
-        def check_transfer_process(proc):
-            while proc.poll() is not None:
+        def check_transfer_process(proc, fns):
+            proc.communicate(input="\n".join(fns).encode())
+            while proc.poll() is None:
                 outs, errs = proc.communicate()
 
-        threading.Thread(
-            target=check_transfer_process, args=(self.transfer_process, )).start()
+        self.transfer_thread = threading.Thread(
+            target=check_transfer_process, args=(self.transfer_process, fns)).start()
 
 
 class Controller:
