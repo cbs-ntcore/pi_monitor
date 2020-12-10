@@ -232,7 +232,7 @@ get_state = function () {
 		list_filenames(result, directory);
 	}, "/filesystem/");
 
-	call_method("is_conversion_running", undefined, undefined, function (result) {
+	call_method("is_converting", undefined, undefined, function (result) {
 		el = document.getElementById("conversion_indicator");
 		if (result) {
 			el.classList.add("enabled");

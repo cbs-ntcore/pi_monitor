@@ -81,7 +81,7 @@ class FileSystem:
         return to_convert
 
     def convert_all_files(self, directory):
-        if self.is_conversion_running():
+        if self.is_converting():
             # TODO setup conversion queue
             raise Exception("Only 1 conversion allowed at a time")
 
@@ -95,13 +95,13 @@ class FileSystem:
         def run_conversion(fns):
             for fn in fns:
                 self.convert_video(fn)
-                while self.is_conversion_running():
+                while self.is_converting():
                     time.sleep(0.1)
 
         thread = threading.Thread(target=run_conversion, args=(to_convert, ))
         thread.start()
 
-    def is_conversion_running(self):
+    def is_converting(self):
         if self.conversion_process is None:
             return False
         # check if process is done
@@ -115,7 +115,7 @@ class FileSystem:
 
     def convert_video(self, filename):
         # check existing conversion is done
-        if self.is_conversion_running():
+        if self.is_converting():
             # TODO setup conversion queue
             raise Exception("Only 1 conversion allowed at a time")
 
@@ -125,7 +125,7 @@ class FileSystem:
         self.conversion_process = subprocess.Popen(cmd.split())
 
         # check conversion is running
-        return self.is_conversion_running()
+        return self.is_converting()
 
     def delete_file(self, filename):
         os.remove(filename)

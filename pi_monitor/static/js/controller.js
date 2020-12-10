@@ -3,6 +3,8 @@ var monitors = [];
 var recording_state_poll_interval = 10000;
 var idle_state_poll_interval = 3000;
 
+var file_info_poll_interval = 5000;
+
 var stream_interval = 1000;
 var stream_timer = null;
 
@@ -25,9 +27,14 @@ class Monitor {
 		document.getElementById("monitors_div").appendChild(elements);
 		this.element = document.getElementById(ip + "_div");
 
-		// TODO setup and enable state timer
+		// setup and enable state timer
+		this.state = null;
 		this.state_timer = null;
 		this.update_state();
+
+		this.file_info = null;
+		this.file_info_timer = null;
+		this.update_file_info();
 	}
 
 	update_image(callback) {
@@ -43,6 +50,39 @@ class Monitor {
 
 	stop_recording() {
 		call_method("stop_recording", undefined, undefined, undefined, this.endpoint);
+	}
+
+	update_file_info() {
+		call_method("get_file_info", undefined, undefined, (file_info) => {
+			this.file_info = file_info;
+			// TODO update UI
+			// count open files
+			// organize by basename
+			let n_open = 0;
+			let by_ext = {};
+			for (let info of file_info) {
+				if (info.open) n_open += 1;
+				let ext = info.name.split(".")[1]
+				if (!(ext in by_ext)) by_ext[ext] = 0;
+				by_ext[ext] += 1;
+			};
+			let file_info_string = String(n_open) + " Open, ";
+			console.log(by_ext);
+			for (let ext in by_ext) {
+				console.log(ext);
+				let n = by_ext[ext]
+				file_info_string += String(n) + " " + ext + ", ";
+			};
+			this.element.querySelector(".file_info").textContent = file_info_string.substring(
+				0, file_info_string.length - 2);
+
+			if (this.file_info_timer !== null) {
+				clearTimeout(this.file_info_timer);
+				this.file_info_timer = null;
+			};
+			this.file_info_timer = setTimeout(
+				() => {this.update_file_info();}, file_info_poll_interval);
+		}, this.endpoint);
 	}
 
 	update_state() {
@@ -212,6 +252,25 @@ setup_monitors = function (monitor_info) {
 		port = monitor_info[1];
 		monitors.push(new Monitor(ip, port));
 	};
+};
+
+
+convert_all_files = function () {
+	let check_conversion = function () {
+		call_method("is_converting", undefined, undefined, function (result ) {
+			if (result) {  // still converting
+				// call this again 1 second later
+				setTimeout(check_conversion, 1000);
+				el.classList.add("hot");
+			} else {
+				// clean up after conversion
+				let el = document.getElementById("convert_btn");
+				el.innerHTML = "Convert";
+				el.classList.remove("hot");
+			};
+		}, "/controller/");
+	};
+	call_method("convert_all_files", undefined, undefined, check_conversion, "/controller/");
 };
 
 
