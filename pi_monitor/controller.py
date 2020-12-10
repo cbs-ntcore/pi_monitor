@@ -22,6 +22,8 @@ Features
 import datetime
 import logging
 import os
+import subprocess
+import threading
 
 import requests
 
@@ -39,6 +41,8 @@ default_monitors = {
 }
 
 monitors_filename = os.path.expanduser("~/.pi_monitor/config/monitors.json")
+# TODO move this into the config file and make it dynamic
+videos_directory = os.path.expanduser("~/videos")
 
 
 def ip_to_index(ip):
@@ -53,8 +57,10 @@ class MonitorConnection:
     def __init__(self, ip, port=server.default_port):
         logging.debug(f"MonitorConnection __init__ for {ip}:{port}")
         self.ip = ip
+        self.name = "monitor{}".format(ip_to_index(ip))
         self.port = port
         self.session = requests.Session()
+        self.transfer_process = None
 
     def link_url(self):
         return "http://{}:{}/monitor.html".format(self.ip, self.port)
@@ -95,6 +101,13 @@ class MonitorConnection:
             "set_config", "camera",
             args=({"record": False}, ), kwargs={"update": True})
 
+    def toggle_recording(self):
+        cfg = self.get_config()
+        if cfg['record']:
+            return self.stop_recording()
+        else:
+            return self.start_recording()
+
     def get_config(self):
         return self.call_method("get_config", "camera")
 
@@ -104,58 +117,97 @@ class MonitorConnection:
     def get_disk_space(self, *args, **kwargs):
         return self.call_method("get_disk_space", "filesystem", args=args, kwargs=kwargs)
 
-    def convert_all_files(self):
+    def convert_all_files(self, directory=None):
+        if directory is None:
+            cfg = self.get_config()
+            directory = cfg["video_directory"]
         cfg = self.get_config()
         return self.call_method(
-            "convert_all_files", "filesystem", args=(cfg["video_directory"], ))
+            "convert_all_files", "filesystem", args=(directory, ))
 
     def is_converting(self):
         return self.call_method("is_converting", "filesystem")
 
-    def get_state(self):
-        cfg = self.get_config()
-        bytes_free = self.get_disk_space(cfg["video_directory"])
+    def get_state(self, directory=None):
+        if directory is None:
+            cfg = self.get_config()
+            directory = cfg["video_directory"]
+        bytes_free = self.get_disk_space(directory)
         return {
             "recording": cfg["record"],
             "disk_space": bytes_free,
             "converting": self.is_converting(),
         }
 
-    def get_file_info(self):
-        cfg = self.get_config()
+    def get_file_info(self, directory=None):
+        if directory is None:
+            cfg = self.get_config()
+            directory = cfg["video_directory"]
         file_info = self.call_method(
-            "get_file_info", "filesystem", args=(cfg["video_directory"], ))
+            "get_file_info", "filesystem", args=(directory, ))
         return file_info
 
-    # TODO get file info, get individual files [through static files]
+    def transfer_files(self, destination_directory):
+        if self.transfer_process is not None and self.transfer_process.poll() is None:
+            raise Exception("Transfer already in progress, only 1 allowed")
 
+        # first fetch monitor (src) video directory
+        source_directory = self.get_config()["video_directory"]
+
+        # don't transfer open files
+        fns = []
+        for fi in self.get_file_info(source_directory):
+            if fi['open']:
+                continue
+            name = fi['name']
+            # TODO filter by name/extension
+            fns.append(name)
+        cmd = [
+            "rsync",
+            "--files-from=-",
+            f"{self.ip}:{source_directory}",
+            f"{destination_directory}",
+        ]
+        self.transfer_process = subprocess.Popen(
+            cmd, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+        #self.transfer_process.communicate(input="\n".join(fns))
+        self.transfer_process.stdin.write("\n".join(fns).encode())
+
+        # setup thread to watch process until it finishes
+        def check_transfer_process(proc):
+            while proc.poll() is not None:
+                outs, errs = proc.communicate()
+
+        threading.Thread(
+            target=check_transfer_process, args=(self.transfer_process, )).start()
 
 
 class Controller:
     def __init__(self, monitor_info):
         self.monitor_info = monitor_info  # list of (ip, port)
-        self.monitors = {}  # key = monitor index
-        for info in self.monitor_info:
-            ip, port = info
-            index = ip_to_index(ip)
-            self.monitors[index] = MonitorConnection(ip, port)
+        self.monitors = [MonitorConnection(*i) for i in self.monitor_info]
     
     def get_monitors(self):
         return self.monitor_info
 
     def start_recording(self):
-        [m.start_recording() for m in self.monitors.values()]
+        [m.start_recording() for m in self.monitors]
 
     def stop_recording(self):
-        [m.stop_recording() for m in self.monitors.values()]
+        [m.stop_recording() for m in self.monitors]
 
     def convert_all_files(self):
-        [m.convert_all_files() for m in self.monitors.values()]
+        [m.convert_all_files() for m in self.monitors]
 
     def is_converting(self):
-        return any((m.is_converting() for m in self.monitors.values()))
+        return any((m.is_converting() for m in self.monitors))
 
-    # TODO transfer files from monitor(s) to controller
+    def transfer_files(self, destination_directory):
+        for monitor in self.monitors:
+            monitor_dst = os.path.join(destination_directory, monitor.name)
+            if not os.path.exists(monitor_dst):
+                os.makedirs(monitor_dst)
+            monitor.transfer_files(monitor_dst)
 
 
 def run(*args, **kwargs):

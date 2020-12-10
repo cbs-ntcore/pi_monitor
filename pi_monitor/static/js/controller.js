@@ -23,9 +23,12 @@ class Monitor {
 		// setup elements
 		elements.querySelector(".monitor_div").id = ip + "_div";
 		elements.querySelector(".monitor_title").textContent = "Monitor IP: " + ip;
-		// TODO setup other elements
 		document.getElementById("monitors_div").appendChild(elements);
 		this.element = document.getElementById(ip + "_div");
+		this.element.querySelector(".record_btn").onclick = () => {
+			this.toggle_recording();
+			this.update_state();
+		};
 
 		// setup and enable state timer
 		this.state = null;
@@ -52,10 +55,13 @@ class Monitor {
 		call_method("stop_recording", undefined, undefined, undefined, this.endpoint);
 	}
 
+	toggle_recording() {
+		call_method("toggle_recording", undefined, undefined, undefined, this.endpoint);
+	}
+
 	update_file_info() {
 		call_method("get_file_info", undefined, undefined, (file_info) => {
 			this.file_info = file_info;
-			// TODO update UI
 			// count open files
 			// organize by basename
 			let n_open = 0;
@@ -67,9 +73,7 @@ class Monitor {
 				by_ext[ext] += 1;
 			};
 			let file_info_string = String(n_open) + " Open, ";
-			console.log(by_ext);
 			for (let ext in by_ext) {
-				console.log(ext);
 				let n = by_ext[ext]
 				file_info_string += String(n) + " " + ext + ", ";
 			};
@@ -196,9 +200,11 @@ toggle_streaming = function () {
 	if (stream_timer !== null) {
 		clearInterval(stream_timer);
 		el.innerHTML = "Start Streaming";
+		el.classList.remove("hot");
     } else {
 		stream_timer = setInterval(update_all_images, stream_interval);
 		el.innerHTML = "Stop Streaming";
+		el.classList.add("hot");
     };
 };
 
@@ -258,13 +264,13 @@ setup_monitors = function (monitor_info) {
 convert_all_files = function () {
 	let check_conversion = function () {
 		call_method("is_converting", undefined, undefined, function (result ) {
+			let el = document.getElementById("convert_btn");
 			if (result) {  // still converting
 				// call this again 1 second later
 				setTimeout(check_conversion, 1000);
 				el.classList.add("hot");
 			} else {
 				// clean up after conversion
-				let el = document.getElementById("convert_btn");
 				el.innerHTML = "Convert";
 				el.classList.remove("hot");
 			};
