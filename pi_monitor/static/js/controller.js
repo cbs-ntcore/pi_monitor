@@ -287,7 +287,23 @@ convert_all_files = function () {
 
 
 transfer_all_files = function () {
-	call_method("transfer_files", [video_directory, ], undefined, undefined, "/controller/");
+	call_method("transfer_files", [video_directory, ], undefined, () => {
+		// wait for is_transferring to finish
+		check_transfer = function () {
+			call_method("is_transferring", undefined, undefined, (is_transferring) => {
+				let el = document.getElementById("transfer_btn");
+				if (is_transferring) {
+					// still transferring
+					setTimeout(check_transfer, 1000);
+				} else {
+					// finished
+					el.classList.remove("hot");
+				};
+			}, "/controller/");
+		};
+		el.classList.add("hot");
+		setTimeout(check_transfer, 1000);
+	}, "/controller/");
 }
 
 
