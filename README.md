@@ -166,7 +166,8 @@ monitor code).
 
 Configure camera by adjusting settings in gear at top right of page
 Start/stop streaming by clicking button at top left (streaming during recording might cause video errors)
-See current files near bottom of page. Files can be downloaded, converted (to mp4) and removed (after checking 'Allow Removal' [this removal is **PERMANENT**])
+See current files near bottom of page. Files can be downloaded, converted
+(to mp4) and removed (after checking 'Allow Removal' [this removal is **PERMANENT**])
 See current errors at bottom of page (refreshing the page clears these)
 
 If you'd like the code to start automatically on reboot enable the systemd 
@@ -186,3 +187,13 @@ sudo systemctl status monitor.service
 # to see the log output of the current or last run of the service
 sudo journalctl -u monitor.service
 ```
+
+A similar process can be used to enable the controller to run on boot (note that the
+controller and monitor by default use the same port meaning only 1 can run per
+machine):
+```bash
+sudo ln -s ~/r/cbs-ntcore/pi_monitor/services/controller.service /etc/systemd/system/controller.service
+sudo systemctl enable controller.service
+sudo systemctl start controller.service
+```
+
