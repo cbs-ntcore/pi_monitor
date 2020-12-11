@@ -13,6 +13,7 @@ import io
 import logging
 import os
 import socket
+import sys
 import tempfile
 import threading
 import time
@@ -180,7 +181,11 @@ class CameraThread(threading.Thread):
 
     def run(self):
         self.running = True
-        self.cam = PiCamera()
+        try:
+            self.cam = PiCamera()
+        except Exception as e:
+            logging.error(f"Failed to open camera {e}")
+            sys.exit(1)
         with self.lock:
             try:
                 self._set_camera_settings()
