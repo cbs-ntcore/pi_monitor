@@ -301,7 +301,7 @@ transfer_all_files = function () {
 				};
 			}, "/controller/");
 		};
-		el.classList.add("hot");
+		document.getElementById("transfer_btn").classList.add("hot");
 		setTimeout(check_transfer, 1000);
 	}, "/controller/");
 }

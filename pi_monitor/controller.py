@@ -208,6 +208,9 @@ class Controller:
     def is_converting(self):
         return any((m.is_converting() for m in self.monitors))
 
+    def is_transferring(self):
+        return any((m.is_transferring() for m in self.monitors))
+
     def transfer_files(self, destination_directory):
         for monitor in self.monitors:
             monitor_dst = os.path.join(destination_directory, monitor.name)
