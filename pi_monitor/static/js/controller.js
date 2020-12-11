@@ -298,6 +298,7 @@ transfer_all_files = function () {
 				} else {
 					// finished
 					el.classList.remove("hot");
+					get_file_info();
 				};
 			}, "/controller/");
 		};

@@ -149,7 +149,9 @@ class MonitorConnection:
         return file_info
     
     def is_transferring(self):
-        return self.transfer_process is not None and self.transfer_process.poll()
+        return (
+            self.transfer_process is not None and
+            self.transfer_process.poll() is None)
 
     def transfer_files(self, destination_directory):
         if self.transfer_process is not None and self.transfer_process.poll() is None:
