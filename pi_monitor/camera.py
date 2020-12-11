@@ -12,8 +12,8 @@ import datetime
 import io
 import logging
 import os
+import signal
 import socket
-import sys
 import tempfile
 import threading
 import time
@@ -185,7 +185,8 @@ class CameraThread(threading.Thread):
             self.cam = PiCamera()
         except Exception as e:
             logging.error(f"Failed to open camera {e}")
-            sys.exit(1)
+            os.kill(os.getpid(), signal.SIGINT)
+            return
         with self.lock:
             try:
                 self._set_camera_settings()
