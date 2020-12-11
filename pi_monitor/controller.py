@@ -29,6 +29,7 @@ import requests
 
 from . import backend
 from . import config
+from . import filesystem
 from . import server
 from . import sysctl
 
@@ -231,4 +232,5 @@ def run(*args, **kwargs):
         monitors.append((ip, port))
         backend.register(MonitorConnection, ip_to_pattern(ip), args=(ip, port))
     backend.register(Controller, r"^/controller/.??", args=(monitors, ))
+    backend.register(filesystem.FileSystem, r"^/filesystem/.??")
     backend.serve(*args, **kwargs)

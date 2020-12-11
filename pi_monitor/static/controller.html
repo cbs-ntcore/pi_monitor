@@ -15,7 +15,9 @@
 		<template id="monitor_template">
 			<div class="monitor_div">
 				<div class="frame_div">
+					<a class="frame_link" href="">
 					<img class="video_frame" src="" width=320 height=240></img>
+					</a>
 				</div>
 				<div class="monitor_contents">
 					<span class="monitor_title">Monitor IP: ? </span>
@@ -46,22 +48,23 @@
 			<button id="stream_btn" onclick="toggle_streaming()">Start Streaming</button>
 			<button id="record_btn" onclick="toggle_recording()">?? Recording</button>
 			<button id="convert_btn" onclick="convert_all_files()">Convert</button>
+			<button id="transfer_btn" onclick="transfer_all_files()">Transfer</button>
 			<!--<span id="conversion_indicator">?</span>-->
+			<input type="text" id="directory_input" value="enter your video directory" />
 		</div>
 		<!--
 		<div>
 			<span>Space on disk:<span id="disk_space">??</span></span>
 		</div>
 		<img id="video_frame" src="" width=320 height=240></img>
+		-->
+		<div id="monitors_div"></div>
 		<div>
-			<input type="checkbox" id="can_remove" name="can_remove" onclick="get_state()"/>
+			<input type="checkbox" id="can_remove" name="can_remove" onclick="get_file_info()"/>
 			<label for="can_remove">Allow removal</label><br />
 			Files:
 			<ul id="filename_list"></ul>
-			<button id="convert_btn" onclick="convert_all_files()">Convert All</button>
 		</div>
-		-->
-		<div id="monitors_div"></div>
 		<div>
 			Errors:
 			<ul id="error_list"></ul>

@@ -4,11 +4,13 @@ var recording_state_poll_interval = 10000;
 var idle_state_poll_interval = 3000;
 
 var file_info_poll_interval = 5000;
+var file_info_timer = null;
 
 var stream_interval = 1000;
 var stream_timer = null;
 
 var recording = null;
+var video_directory = null;
 
 
 class Monitor {
@@ -29,6 +31,9 @@ class Monitor {
 			this.toggle_recording();
 			this.update_state();
 		};
+		call_method("link_url", undefined, undefined, (link) => {
+			this.element.querySelector(".frame_link").href = link;
+		}, this.endpoint);
 
 		// setup and enable state timer
 		this.state = null;
@@ -276,11 +281,71 @@ convert_all_files = function () {
 			};
 		}, "/controller/");
 	};
-	call_method("convert_all_files", undefined, undefined, check_conversion, "/controller/");
+	call_method(
+		"convert_all_files", undefined, undefined, check_conversion, "/controller/");
 };
 
 
+transfer_all_files = function () {
+	call_method("transfer_files", [video_directory, ], undefined, undefined, "/controller/");
+}
+
+
+get_file_info = function () {
+	call_method("static_directory", [video_directory, ], undefined, undefined, "/filesystem/");
+	// recursive file get
+	call_method("get_file_info", [video_directory, true], undefined, (file_info) => {
+		let ul = document.getElementById("filename_list");
+		// remove all current filenames
+		while (ul.firstChild) ul.removeChild(ul.firstChild);
+		// sort file info by name
+		file_info.sort((a, b) => {
+			if (a.name > b.name) return 1; return (a.name < b.name) ? -1 : 0;});
+		for (let info of file_info) {
+			// color code by extension?
+			let li = document.createElement("li");
+			let link = document.createElement("a");
+			link.href = "/filesystem/" + info.name;
+			link.text = info.name;
+			li.append(link);
+			if (document.getElementById("can_remove").checked) {
+				let btn = document.createElement("button");
+				btn.textContent = "Remove";
+				btn.onclick = () => {
+					call_method(
+						"delete_file", [video_directory + "/" + info.name], undefined,
+						get_file_info, "/filesystem/");
+				};
+				btn.classList.add("hot");
+				li.appendChild(btn);
+			};
+			ul.append(li);
+		};
+		// setup to call this again
+		if (file_info_timer !== null) {
+			clearTimeout(file_info_timer);
+			file_info_timer = null;
+		};
+		file_info_timer = setTimeout(get_file_info, file_info_poll_interval);
+	}, "/filesystem/");
+}
+
+
 window.onload = function () {
+	let el = document.getElementById("directory_input");
+	video_directory = el.value;
+	// TODO get directory from backend [loaded from default config]
+	el.onkeydown = (key) => {
+		if (key.keyCode == 13) {
+			el.classList.remove("hot");
+			video_directory = el.value;
+			get_file_info();
+		} else {
+			el.classList.add("hot");
+		};
+	};
+
 	// get monitor info [(ip, port), ...]
 	call_method("get_monitors", undefined, undefined, setup_monitors, "/controller/");
+	get_file_info();
 };

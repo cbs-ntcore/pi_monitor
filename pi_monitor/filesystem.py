@@ -41,6 +41,12 @@ def value_to_metric_prefix_string(value):
 class FileSystem:
     def __init__(self):
         self.conversion_process = None
+        self._static_directory = None
+
+    def static_directory(self, new_directory=None):
+        if new_directory is not None:
+            self._static_directory = new_directory
+        return self._static_directory
 
     def get_disk_space(self, directory='/'):
         return psutil.disk_usage(directory).free
@@ -59,17 +65,29 @@ class FileSystem:
                 finfo.append([f.path, p.pid, f.fd])
         return finfo
 
-    def get_file_info(self, directory):
+    def get_file_info(self, directory, recursive=False):
         d = os.path.normpath(directory) + os.sep
         open_files = {
             os.path.relpath(fpath, d): fpid for (fpath, fpid, _)
             in self.get_open_files()
             if os.path.abspath(fpath).startswith(d)}
-        return [{
-            'name': fn,
-            'size': os.stat(os.path.join(directory, fn)).st_size,
-            'open': fn in open_files,
-            } for fn in os.listdir(directory)]
+        if not recursive:
+            return [{
+                'name': fn,
+                'size': os.stat(os.path.join(directory, fn)).st_size,
+                'open': fn in open_files,
+                } for fn in os.listdir(directory)]
+        file_info = []
+        for subdir, _, filenames in os.walk(directory):
+            for fn in filenames:
+                sfn = os.path.join(subdir, fn)
+                rfn = os.path.relpath(sfn, directory)
+                file_info.append({
+                    'name': rfn,
+                    'size': os.stat(sfn).st_size,
+                    'open': rfn in open_files
+                })
+        return file_info
 
     def get_files_to_convert(self, directory):
         finfo = {i['name']: i for i in self.get_file_info(directory)}
