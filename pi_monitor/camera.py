@@ -41,7 +41,11 @@ default_config = {
     'settings': {},  # direct camera settings
     'video_directory': '/home/pi/videos/',
     'timestamp_period_ms': 30000, # or 0 to disable
+    'overlay_timestamp': True,  # add second timestamp to video
 }
+
+
+timestamp_format = "%Y-%m-%d %H:%M:%S"
 
 
 class SettingConverter:
@@ -200,6 +204,7 @@ class CameraThread(threading.Thread):
             #    if s in self.cfg['settings']:
             #        continue
             #    self.cfg['settings'][s] = getattr(self.cam, s)
+        last_annotation = time.monotonic()
         while self.running:
             action = 'wait'
             with self.lock:
@@ -232,6 +237,13 @@ class CameraThread(threading.Thread):
                 self.stop_recording()
             else:
                 pass
+            if time.monotonic() - last_annotation > 0.2:
+                if self.cfg['overlay_timestamp']:
+                    # add timestamp to frame every 200 ms if overlay_timestamp
+                    self.cam.annotate_text = datetime.datetime.now().strftime(timestamp_format)
+                    last_annotation = time.monotonic()
+                else:
+                    self.cam.annotate_text = ""
 
     def stop(self):
         with self.lock:
