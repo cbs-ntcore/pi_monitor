@@ -7,6 +7,10 @@ Usage:
 import os
 import sys
 
+try:
+    from . import avmonitor
+except ImportError as e:
+    pass
 from . import camera
 from . import controller
 from . import monitor
@@ -28,6 +32,8 @@ if __name__ == '__main__':
         camera.test()
     elif node == 'monitor':
         monitor.run()
+    elif node == 'avmonitor':
+        avmonitor.run()
     elif node == 'controller':
         controller.run()
     else:
