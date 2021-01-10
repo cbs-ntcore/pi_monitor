@@ -1,3 +1,5 @@
+import datetime
+import logging
 import os
 import re
 import socket
@@ -62,13 +64,13 @@ class MicThread(threading.Thread):
                     # wait for next chunk and write it
                     bs = self.stream.read(self.cfg['rate'])
                     self.wav_file.writeframes(bs)
-                    chuck_count += 1
+                    self.chunk_count += 1
                     # split recording?
-                    if chunk_count % self.cfg['split_duration_s'] == 0:
+                    if self.chunk_count % self.cfg['split_duration_s'] == 0:
                         action = 'split'
                     else:
                         action = 'pass'
-                    if chunk_count >= self.cfg['duration_s']:
+                    if self.chunk_count >= self.cfg['duration_s']:
                         action = 'stop'
                 # else do nothing
             if action == 'wait':
@@ -118,7 +120,7 @@ class MicThread(threading.Thread):
         with self.lock:
             return copy.deepcopy(self.cfg)
 
-    def next_filename():
+    def next_filename(self):
         with self.lock:
             if self.record_start is None:
                 self.filename_index = 0
@@ -197,7 +199,7 @@ class MicThread(threading.Thread):
             self.record_start = None
             self.cfg['record'] = False
 
-    def _find_device_index(self, name):
+    def _find_device_index(self, name_pattern):
         info = self.interface.get_host_api_info_by_index(0)
         numdevices = info.get('deviceCount')
 
@@ -205,7 +207,7 @@ class MicThread(threading.Thread):
             dev_info = self.interface.get_device_info_by_host_api_device_index(0, i)
             if dev_info.get('maxInputChannels') > 0:
                 name = dev_info.get('name')
-                if re.match(name_re, name):
+                if re.match(name_pattern, name):
                     return i
         raise Exception(f"No device found with name {name}")
 
