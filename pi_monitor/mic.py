@@ -53,7 +53,7 @@ class MicThread(threading.Thread):
         try:
             self.interface = pyaudio.PyAudio()
         except Exception as e:
-            logging.error("Failed to open audio interface: {e}")
+            logging.error(f"Failed to open audio interface: {e}")
             self.running = False
             return
 
