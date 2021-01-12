@@ -41,7 +41,7 @@ class WavFileWriter(threading.Thread):
                     f = wave.open(v, 'wb')
                     f.setnchannels(self.nchannels)
                     f.setframerate(self.rate)
-                    f.setsampwidth(self.samprate)
+                    f.setsampwidth(self.sampwidth)
                 else:  # close file
                     f.close()
                     f = None
