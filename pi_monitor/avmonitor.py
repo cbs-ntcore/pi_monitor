@@ -5,6 +5,7 @@ Web server running on a pi with a camera and microphone
 import logging
 import os
 import re
+import queue
 import threading
 import time
 import wave
@@ -18,6 +19,49 @@ from . import mic
 from . import sysctl
 
 
+class WavFileWriter(threading.Thread):
+    def __init__(self, nchannels, rate, sampwidth):
+        super().__init__()
+        self.nchannels = nchannels
+        self.rate = rate
+        self.sampwidth = sampwidth
+        self._q = queue.Queue()
+
+    def run(self):
+        f = None
+        while True:
+            v = self._q.get()
+            if v is None:
+                break
+            elif isinstance(v, str):  # filename
+                if len(v):  # new file
+                    if f is not None:
+                        f.close()
+                        f = None
+                    f = wave.open(v, 'wb')
+                    f.setnchannels(self.nchannels)
+                    f.setframerate(self.rate)
+                    f.setsampwidth(self.samprate)
+                else:  # close file
+                    f.close()
+                    f = None
+            else:  # frames
+                f.writeframes(v)
+
+    def open_file(self, filename):
+        self._q.put(filename)
+
+    def close_file(self):
+        self._q.put("")
+
+    def write_frames(self, frames):
+        self._q.put(frames)
+
+    def stop(self):
+        self._q.put(None)
+        self.join()
+
+
 class Mic(threading.Thread):
     def __init__(self):
         super().__init__()
@@ -25,16 +69,20 @@ class Mic(threading.Thread):
 
         self.running = False
 
-        self._wav_file = None
         self._pcm = None
 
         self._device = 'dsnoop:CARD=Ultrasound,DEV=0'
         self._rate = 256000
         self._format = alsaaudio.PCM_FORMAT_S16_LE
         self._channels = 1
-        self._period_size = 2048
+        self._period_size = 25600  # 100 ms
 
         self._format_width = 2
+
+        self._wav_file_writer = WavFileWriter(
+            self._channels, self._rate, self._format_width)
+        self._wav_file_writer.start()
+        self._wav_file_open = False
 
     def run(self):
         self.running = True
@@ -46,9 +94,10 @@ class Mic(threading.Thread):
             # by default, wait 1 ms
             delay_s = 0.001
             with self.lock:
-                if self._wav_file is not None:
+                if self._wav_file_open:
                     if self._pcm is None:
                         # mic has not yet been opened, open mic
+                        logging.debug("Mic opening device %s", self._device)
                         self._pcm = alsaaudio.PCM(
                             type=alsaaudio.PCM_CAPTURE, device=self._device)
                         self._pcm.setrate(self._rate)
@@ -57,41 +106,40 @@ class Mic(threading.Thread):
                         self._pcm.setperiodsize(self._period_size)
                     n, bs = self._pcm.read()
                     if n > 0:
-                        self._wav_file.writeframes(bs)
+                        self._wav_file_writer.write_frames(bs)
                     elif n < 0:  # dropped frames
                         logging.error(f"Dropped audio frames {n}")
                     # x.read will block up to 1 buffer so wait half that
                     # to allow functions outside thread to modify state
-                    delay_s = buffer_delay_s
-                else:  # wav_file is None
+                    #delay_s = buffer_delay_s
+                else:  # wav_file is closed
                     # file is None/closed, close mic
                     if self._pcm is not None:
+                        logging.debug("Mic closing device %s", self._device)
                         self._pcm.close()
                         self._pcm = None
             time.sleep(delay_s)
 
         self.interface.terminate()
 
-    def _open_wav_file(self, filename):
-        """Do not call this without first acquiring the lock"""
-        self._wav_file = wave.open(filename, 'wb')
-        self._wav_file.setnchannels(self._channels)
-        self._wav_file.setframerate(self._rate)
-        self._wav_file.setsampwidth(self._format_width)
-
     def start_recording(self, filename):
+        logging.debug("Mic start_recording")
         with self.lock:
-            self._open_wav_file(filename)
+            self._wav_file_writer.open_file(filename)
+            self._wav_file_open = True
 
     def split_recording(self, filename):
+        logging.debug("Mic split_recording")
         with self.lock:
-            self._wav_file.close()
-            self._open_wav_file(filename)
+            self._wav_file_writer.close_file()
+            self._wav_file_writer.open_file(filename)
+            self._wav_file_open = True
 
     def stop_recording(self):
+        logging.debug("Mic stop_recording")
         with self.lock:
-            self._wav_file.close()
-            self._wav_file = None
+            self._wav_file_writer.close_file()
+            self._wav_file_open = False
 
     def stop(self):
         with self.lock:
