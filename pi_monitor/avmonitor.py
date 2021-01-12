@@ -3,6 +3,7 @@ Web server running on a pi with a camera and microphone
 """
 
 import os
+import re
 import threading
 import time
 import wave
@@ -63,7 +64,7 @@ class Mic(threading.Thread):
 
         # compute delay time to wait 1/2 buffer
         buffer_delay_s = (
-            open_stream_config['frames_per_buffer'] / open_stream_config['rate'])
+            open_stream_cfg['frames_per_buffer'] / open_stream_cfg['rate'])
 
         while self.running:
             # by default, wait 1 ms
@@ -73,7 +74,7 @@ class Mic(threading.Thread):
                     if self.stream is None:
                         # stream has not yet been opened, open stream
                         self.stream = self.interface.open(**open_stream_cfg)
-                    bs = self.stream.read(open_stream_config['frames_per_buffer'])
+                    bs = self.stream.read(open_stream_cfg['frames_per_buffer'])
                     self.wav_file.writeframes(bs)
                     # stream.read will block up to 1 buffer so wait a bit longer
                     # to allow function outside thread to modify state
@@ -124,12 +125,12 @@ class AVThread(camera.CameraThread):
         super().start_recording()
         # use self.filename to make audio filename
         self.mic.start_recording(
-            os.path.splitext(self.filename) + '.wav')
+            os.path.splitext(self.filename)[0] + '.wav')
 
     def split_recording(self):
         super().split_recording()
         self.mic.split_recording(
-            os.path.splitext(self.filename) + '.wav')
+            os.path.splitext(self.filename)[0] + '.wav')
 
     def stop_recording(self):
         super().stop_recording()
