@@ -50,6 +50,10 @@ class WavFileWriter(threading.Thread):
                 if f is not None:
                     f.writeframes(v)
                 else:
+                    # TODO this error was hit twice, perhaps on a split
+                    # this happens when a file is closed prior to frames stopping
+                    # which happens on stop_recording, perhaps reorganize the code
+                    # so the steam stops before the file closes
                     logging.warning("WavFileWriter: Frames dropped, no open file")
 
     def open_file(self, filename):
@@ -82,7 +86,7 @@ class Mic(threading.Thread):
 
         self._wav_file_writer = WavFileWriter(
             self._channels, self._rate,
-            pyaudio.get_sample_size(self._format)
+            pyaudio.get_sample_size(self._format))
         self._wav_file_writer.start()
         self._wav_file_open = False
 
@@ -101,6 +105,7 @@ class Mic(threading.Thread):
         interface = pyaudio.PyAudio()
         # TODO pull out
         device_index = 2
+        info = interface.get_host_api_info_by_index(0)
         for i in range(info.get('deviceCount')):
             dev_info = interface.get_device_info_by_host_api_device_index(0, i)
             if dev_info.get('maxInputChannels') < 1:
@@ -129,6 +134,7 @@ class Mic(threading.Thread):
                         pcm.stop_stream()
                         pcm.close()
                         pcm = None
+                        self._wav_file_writer.close_file()
             time.sleep(0.001)
 
         interface.terminate()
@@ -149,7 +155,7 @@ class Mic(threading.Thread):
     def stop_recording(self):
         logging.debug("Mic stop_recording")
         with self.lock:
-            self._wav_file_writer.close_file()
+            #self._wav_file_writer.close_file()
             self._wav_file_open = False
 
     def stop(self):
