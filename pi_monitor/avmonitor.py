@@ -10,7 +10,7 @@ import threading
 import time
 import wave
 
-import alsaaudio
+import pyaudio
 
 from . import backend
 from . import camera
@@ -43,10 +43,14 @@ class WavFileWriter(threading.Thread):
                     f.setframerate(self.rate)
                     f.setsampwidth(self.sampwidth)
                 else:  # close file
-                    f.close()
-                    f = None
+                    if f is not None:
+                        f.close()
+                        f = None
             else:  # frames
-                f.writeframes(v)
+                if f is not None:
+                    f.writeframes(v)
+                else:
+                    logging.warning("WavFileWriter: Frames dropped, no open file")
 
     def open_file(self, filename):
         self._q.put(filename)
@@ -69,58 +73,65 @@ class Mic(threading.Thread):
 
         self.running = False
 
-        self._pcm = None
-
-        self._device = 'dsnoop:CARD=Ultrasound,DEV=0'
         self._rate = 256000
-        self._format = alsaaudio.PCM_FORMAT_S16_LE
+        self._format = pyaudio.paInt16
         self._channels = 1
         self._period_size = 25600  # 100 ms
 
-        self._format_width = 2
+        self._format_width = pyaudio.get_sample_size(self._format)
 
         self._wav_file_writer = WavFileWriter(
-            self._channels, self._rate, self._format_width)
+            self._channels, self._rate,
+            pyaudio.get_sample_size(self._format)
         self._wav_file_writer.start()
         self._wav_file_open = False
 
     def run(self):
         self.running = True
 
-        # compute delay time to wait 1/2 buffer
-        buffer_delay_s = self._period_size / self._rate
+        def audio_frame_callback(in_data, frame_count, time_info, status):
+            if frame_count != self._period_size:
+                logging.warning(
+                    "audio_frame_callback dropped frames: {}".format(
+                        (len(in_data), frame_count, time_info, status)))
+            else:
+                self._wav_file_writer.write_frames(in_data)
+            return b"", pyaudio.paContinue
+
+        interface = pyaudio.PyAudio()
+        # TODO pull out
+        device_index = 2
+        for i in range(info.get('deviceCount')):
+            dev_info = interface.get_device_info_by_host_api_device_index(0, i)
+            if dev_info.get('maxInputChannels') < 1:
+                continue
+            if 'Pettersson' in dev_info['name']:  # TODO configure
+                device_index = i
+                break
+        pcm = None
 
         while self.running:
-            # by default, wait 1 ms
-            delay_s = 0.001
             with self.lock:
                 if self._wav_file_open:
-                    if self._pcm is None:
+                    if pcm is None:
                         # mic has not yet been opened, open mic
-                        logging.debug("Mic opening device %s", self._device)
-                        self._pcm = alsaaudio.PCM(
-                            type=alsaaudio.PCM_CAPTURE, device=self._device)
-                        self._pcm.setrate(self._rate)
-                        self._pcm.setformat(self._format)
-                        self._pcm.setchannels(self._channels)
-                        self._pcm.setperiodsize(self._period_size)
-                    n, bs = self._pcm.read()
-                    if n > 0:
-                        self._wav_file_writer.write_frames(bs)
-                    elif n < 0:  # dropped frames
-                        logging.error(f"Dropped audio frames {n}")
-                    # x.read will block up to 1 buffer so wait half that
-                    # to allow functions outside thread to modify state
-                    #delay_s = buffer_delay_s
+                        pcm = interface.open(
+                            input_device_index=device_index,
+                            format=self._format,
+                            channels=self._channels,
+                            rate=self._rate,
+                            frames_per_buffer=self._period_size,
+                            input=True,
+                            stream_callback=audio_frame_callback)
+                        pcm.start_stream()
                 else:  # wav_file is closed
-                    # file is None/closed, close mic
-                    if self._pcm is not None:
-                        logging.debug("Mic closing device %s", self._device)
-                        self._pcm.close()
-                        self._pcm = None
-            time.sleep(delay_s)
+                    if pcm is not None:
+                        pcm.stop_stream()
+                        pcm.close()
+                        pcm = None
+            time.sleep(0.001)
 
-        self.interface.terminate()
+        interface.terminate()
 
     def start_recording(self, filename):
         logging.debug("Mic start_recording")
@@ -131,7 +142,7 @@ class Mic(threading.Thread):
     def split_recording(self, filename):
         logging.debug("Mic split_recording")
         with self.lock:
-            self._wav_file_writer.close_file()
+            #self._wav_file_writer.close_file()
             self._wav_file_writer.open_file(filename)
             self._wav_file_open = True
 
@@ -180,12 +191,6 @@ def run(*args, **kwargs):
     backend.register(
         AVThread, r'^/camera/.??',
         init=lambda o: o.start(), deinit=lambda o: o.stop())
-    #backend.register(
-    #    camera.CameraThread, r'^/camera/.??',
-    #    init=lambda o: o.start(), deinit=lambda o: o.stop())
-    #backend.register(
-    #    mic.MicThread, r'^/mic/.*',
-    #    init=lambda o: o.start(), deinit=lambda o: o.stop())
     backend.register(
         sysctl.SystemControl, r'^/system/.??')
     backend.register(
