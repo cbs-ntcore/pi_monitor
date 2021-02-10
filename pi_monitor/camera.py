@@ -338,7 +338,7 @@ class CameraThread(threading.Thread):
     def start_recording(self):
         fn = self.next_filename()
         with self.lock:
-            self.cam.start_recording(fn, 'h264', inline_headers=True)
+            self.cam.start_recording(fn, 'h264', inline_headers=True, sps_timing=True)
             self.record_start = time.monotonic()
             self.last_split = self.record_start
             self.cfg['record'] = True
