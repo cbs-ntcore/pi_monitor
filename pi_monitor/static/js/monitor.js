@@ -258,6 +258,31 @@ restart_service = function () {
 }
 
 
+sync_date = function () {
+	var date = new Date();
+	// TODO convert to format: 2020-08-25T16:32:15+01:00
+	offset = date.getTimezoneOffset();
+	sign = (offset > 0) ? "-" : "+";  // js offset is opposite of python offset
+	offset_hours = Math.abs(offset) / 60;
+        if (Math.round(offset_hours) != offset_hours) {
+		// minutes != 0
+		offset_minutes = Math.round(Math.floor(offset_hours) * 60);
+	} else {
+		offset_minutes = 0;
+	};
+	offset_string = sign + String(offset_hours).padStart(2, "0") + ":" + String(offset_minutes).padStart(2, "0");
+	date_string = date.getFullYear() + "-"
+		+ String(date.getMonth() + 1).padStart(2, "0")
+		+ "-" + String(date.getDate()).padStart(2, "0")
+		+ "T" + String(date.getHours()).padStart(2, "0")
+		+ ":" + String(date.getMinutes()).padStart(2, "0")
+		+ ":" + String(date.getMinutes()).padStart(2, "0")
+		+ offset_string;
+	console.log({set_date: date_string});
+	call_method("set_date", [date_string, ], undefined, undefined, "/system/");
+}
+
+
 convert_all_files = function () {
 	cfg = config_editor.get();  // TODO what if config editor is open?
 	call_method(
