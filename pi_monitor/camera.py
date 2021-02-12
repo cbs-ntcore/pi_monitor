@@ -9,6 +9,7 @@ Also a 'mock' class to allow testing on a non-pi system
 import base64
 import copy
 import datetime
+import fractions
 import io
 import logging
 import os
@@ -48,8 +49,14 @@ default_config = {
 timestamp_format = "%Y-%m-%d %H:%M:%S"
 
 
-class SettingConverter:
-    def __init__(self, vtype=None, limit=None):
+class BaseSettingConverter:
+    def __init__(self, read_only=False):
+        self.read_only = read_only
+
+
+class SettingConverter(BaseSettingConverter):
+    def __init__(self, vtype=None, limit=None, read_only=False):
+        super().__init__(read_only=read_only)
         if vtype is None:
             self.force_type = lambda v: v
         else:
@@ -78,32 +85,48 @@ class SettingConverter:
         return value
 
 
-class FractionConverter:
+class FractionConverter(BaseSettingConverter):
     def to_picamera(self, value):
-        if len(value) == 1:
-            return (value, 1)
-        elif len(value) == 2:
-            return value
+        if len(value) < 3:
+            return fractions.Fraction(*value)
         raise ValueError("Invalid Fraction value: {}".format(value))
     
     def to_cfg(self, value):
         return [value.numerator, value.denominator]
 
 
+class DoubleFractionConverter(BaseSettingConverter):
+    def to_picamera(self, value):
+        if len(value) != 2:
+            raise ValueError("Invalid Fraction value: {}".format(value))
+        result = []
+        for sub_value in value:
+            if len(sub_value) < 3:
+                result.append(fractions.Fraction(*sub_value))
+            else:
+                raise ValueError("Invalid Fraction value: {}".format(value))
+        return result
+    
+    def to_cfg(self, value):
+        return [
+            [value[0].numerator, value[0].denominator],
+            [value[1].numerator, value[1].denominator]]
+
+
 all_settings = {
-    #'analog_gain',  # fraction:  read only
-    #'awb_gains',  # (fraction, fraction): color adjustment
+    'analog_gain': FractionConverter(read_only=True),  # fraction:  read only
+    'awb_gains': DoubleFractionConverter(),  # (fraction, fraction): color adjustment
     'awb_mode': SettingConverter(),  # str: should be in AWB_MODES
     'brightness': SettingConverter(vtype=int, limit=(0, 100)),  # int: [0-100]
     'clock_mode': SettingConverter(),  # str: must be in CLOCK_MODES
     'contrast': SettingConverter(vtype=int, limit=(-100, 100)),  # int: [-100-100]
     #'crop',  # (float, float, float, float) {depreciated, use zoom}
-    #'digital_gain': FractionConverter(),  # fraction
+    'digital_gain': FractionConverter(read_only=True),  # fraction
     'drc_strength': SettingConverter(),  # str: must be in DRC_STRENGTHS
     #'exif_tags',  # dict: only used in jpeg saving
     'exposure_compensation': SettingConverter(vtype=int, limit=(-25, 25)),  # int: [-25-25]
     'exposure_mode': SettingConverter(),  # str: must be in EXPOSURE_MODES
-    #'exposure_speed': FractionConverter(),  # TODO READ ONLY
+    'exposure_speed': FractionConverter(read_only=True),  # fraction: read only
     'flash_mode': SettingConverter(),  # str: must be in FLASH_MODES
     'framerate': FractionConverter(),  # fraction: target framerate
     #'framerate_delta',  # fraction: fine tune framerate [reset when framerate set]
@@ -161,6 +184,8 @@ class CameraThread(threading.Thread):
         settings = self.cfg['settings']
         for k in settings:
             if k in all_settings:
+                if all_settings[k].read_only:
+                    continue  # skip to next setting
                 try:
                     v = all_settings[k].to_picamera(settings[k])
                 except Exception as e:
