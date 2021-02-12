@@ -1,27 +1,28 @@
 #!/bin/bash
 
-VIDDIR="/home/pi/Repositories/cbs-ntcore/pi_monitor/videos"
+# stop on error
+set -e
 
-# if videos symlink is good, ignore
-if [ -e "$VIDDIR" ]; then
-    echo "video symlink already valid"
-    exit 0
+# check if user is root
+if [[ $EUID -ne 0 ]]; then
+    echo "Must be run as root"
+    exit 1
 fi
 
-# find newly attached drive
-if [ -z "$DEVNAME" ]; then
-   echo "no devname found"
-   exit 0
-fi
+# look through all sd*
+for DRIVE in `find /dev -name sd[a-z][0-9]`; do
+    # check if already mounted
+    if mount -l | grep $DRIVE; then
+        continue
+    fi
 
-# get uuid for first partition of drive
-DRIVE=`blkid ${DEVNAME}1 -o value | head -n 1`
+    # if not mounted, mount to /media using name
+    LABEL=`blkid $DRIVE -o export | grep ^LABEL= | awk -F "=" '{print $2}'`
+    if [ ! -d "/media/$LABEL" ]; then
+        mkdir /media/$LABEL
+    fi
+    mount $DRIVE /media/$LABEL
 
-# if no drive, skip
-if [ -z "$DRIVE" ]; then
-    echo "no drive found"
-    exit 0
-fi
-
-# link drive to videos directory
-ln -sf /media/pi/$DRIVE $VIDDIR
+    # change permissions
+    chmod 777 /media/$LABEL
+done
