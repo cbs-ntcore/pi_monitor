@@ -43,6 +43,7 @@ class FileSystem:
     def __init__(self):
         self.conversion_process = None
         self._static_directory = None
+        self.scan_for_drives()
 
     def static_directory(self, new_directory=None):
         if new_directory is not None:
