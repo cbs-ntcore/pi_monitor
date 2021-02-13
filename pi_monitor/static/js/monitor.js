@@ -283,6 +283,13 @@ sync_date = function () {
 }
 
 
+scan_for_drives = function () {
+	call_method(
+		"scan_for_drives", undefined, undefined, get_state,
+		"/filesystem/");
+}
+
+
 convert_all_files = function () {
 	cfg = config_editor.get();  // TODO what if config editor is open?
 	call_method(

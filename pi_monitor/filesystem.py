@@ -5,6 +5,7 @@ videos
 - convert
 - remove
 """
+import glob
 import logging
 import os
 import subprocess
@@ -147,3 +148,44 @@ class FileSystem:
 
     def delete_file(self, filename):
         os.remove(filename)
+
+    def scan_for_drives(self):
+        drives = [p for p in glob.glob('/dev/sd*') if p[-1].isdigit()]
+        if len(drives) == 0:
+            return
+        # check if all drives are mounted
+        with open('/proc/mounts', 'r') as f:
+            for l in f:
+                l = l.strip()
+                if len(l) == 0:
+                    continue
+                found = None
+                for d in drives:
+                    if d in l:
+                        found = d
+                        break
+                if found is not None:
+                    drives.remove(found)
+                    continue
+        if len(drives) == 0:
+            return
+
+        # get labels of drives
+        labels = {}
+        for label_symlink in glob.glob('/dev/disk/by-label/*'):
+            dev_path = os.path.realpath(label_symlink)
+            labels[dev_path] = os.path.basename(label_symlink)
+
+        for drive in drives:
+            if drive not in labels:
+                logging.warning(f"Found drive {drive} with missing label")
+                continue
+            # check that mount point exists
+            mount_path = "/media/" + labels[drive]
+            if not os.path.exists(mount_path):
+                subprocess.check_call(["sudo", "mkdir", mount_path])
+                subprocess.check_call(["sudo", "chmod", "777", mount_path])
+
+            # mount drive
+            subprocess.check_call(["sudo", "mount", drive, mount_path])
+
