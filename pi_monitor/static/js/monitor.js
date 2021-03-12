@@ -296,7 +296,7 @@ sync_date = function () {
 		+ "-" + String(date.getDate()).padStart(2, "0")
 		+ "T" + String(date.getHours()).padStart(2, "0")
 		+ ":" + String(date.getMinutes()).padStart(2, "0")
-		+ ":" + String(date.getMinutes()).padStart(2, "0")
+		+ ":" + String(date.getSeconds()).padStart(2, "0")
 		+ offset_string;
 	console.log({set_date: date_string});
 	call_method("set_date", [date_string, ], undefined, undefined, "/system/");
@@ -323,6 +323,7 @@ window.onload = function () {
 		document.getElementById("config"), {onChange: config_modified});
 	// fetch config
 	get_config();
+	check_date();
 	// repeatedly fetch image
 	stop_streaming();
 };
