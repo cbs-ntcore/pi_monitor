@@ -258,6 +258,26 @@ restart_service = function () {
 }
 
 
+check_date = function () {
+	// get date from python
+	call_method("get_date", undefined, undefined, function (result) {
+		//s = dt.strftime('%Y-%m-%dT%H:%M:%S%z')
+		server_ms = Date.parse(result);
+		// compare to javascript
+		var date = new Date();
+		client_ms = date.getTime();
+		dt = Math.abs(server_ms - client_ms);
+		console.log({"client_server_dt_ms": dt});
+		if (dt > 5000) {  // 5 seconds
+			// if off by > N seconds prompt user for call sync_date
+			if (confirm("The server time appears incorrect, sync with to your time?")) {
+				sync_date();
+			};
+		}
+	}, "/system/");
+}
+
+
 sync_date = function () {
 	var date = new Date();
 	// TODO convert to format: 2020-08-25T16:32:15+01:00
