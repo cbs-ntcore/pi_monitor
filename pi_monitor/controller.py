@@ -20,6 +20,7 @@ Features
 """
 
 import datetime
+import ipaddress
 import logging
 import os
 import subprocess
@@ -36,7 +37,7 @@ from . import sysctl
 
 default_monitors = {
     "monitors": [
-        "192.168.2.1",
+        #"192.168.2.1",
         # ("192.168.2.1", 8000),  # can also be (ip, port) tuple
     ]
 }
@@ -242,3 +243,56 @@ def run(*args, **kwargs):
     backend.register(Controller, r"^/controller/.??", args=(monitors, ))
     backend.register(filesystem.FileSystem, r"^/filesystem/.??")
     backend.serve(*args, **kwargs)
+
+
+def cmdline_configure():
+    if os.path.exists(monitors_filename):
+        print(f"Found existing monitors.json at {monitors_filename}")
+        try:
+            monitors = config.load(monitors_filename, default_monitors)
+        except Exception as e:
+            print(f"Error while loading {monitors_filename}: {e}")
+            print("using default monitors")
+            monitors = default_monitors
+    while True:
+        print("Current monitors:")
+        for m in sorted(monitors['monitors']):
+            print(f"\t{m}")
+        print("Would you like to [a]dd, [d]elete, [s]ave or [q]uit?")
+        r = input(">>").lower().strip()
+        if len(r) == 0:
+            print(f"Invalid input: '{r}' is 0 length")
+            continue
+        if r[0] == 'q':  # quit
+            print("Quitting...")
+            break
+        elif r[0] == 's':  # save
+            print(f"Saving to {monitors_filename}")
+            try:
+                config.save(monitors, monitors_filename)
+                print("Finished saving")
+            except Exception as e:
+                print(f"!! Failed to save with exception {e} !!")
+        elif r[0] == 'd':  # remove
+            print("Enter the ip address you want to remove")
+            ip = input(">>").strip()
+            if ip not in monitors['monitors']:
+                print(f"Invalid ip {ip} not in list")
+            else:
+                monitors['monitors'].remove(ip)
+        elif r[0] == 'a':  # add
+            print("Enter the ip address you want to add")
+            ip = input(">>").strip()
+            # TODO check this is a valid ip
+            try:
+                ipaddress.ip_address(ip)
+            except ValueError as e:
+                print(f"ip {ip} is invalid: {e}")
+                continue
+            if ip in monitors['monitors']:
+                print(f"ip {ip} already in monitors")
+            else:
+                print(f"Adding ip {ip} to monitors")
+                monitors['monitors'].append(ip)
+        else:
+            print(f"Unknown input {r}")

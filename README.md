@@ -150,6 +150,17 @@ to make sure key based ssh connections are setup both ways (monitor to controlle
 controller to monitor)
 6) to exit out of an ssh connection type ```exit```
 
+After the network is configured you will need to add monitor ip addresses to
+~/.pi_monitor/config/monitors.json on the controller computer. You can either edit this
+file directly (and check that it's valid) or execute pi_monitor configure controller:
+
+```bash
+cd ~/r/cbs-ntcore/pi_monitor
+python3 -m pi_monitor configure_controller
+```
+
+The monitors.json configuration only is loaded when the controller service starts so a restart
+of the service (or pi) will be required before the new settings take effect.
 
 # How to use
 

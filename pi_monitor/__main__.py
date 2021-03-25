@@ -35,5 +35,7 @@ if __name__ == '__main__':
         avmonitor.run()
     elif node == 'controller':
         controller.run()
+    elif node == 'configure_controller':
+        controller.cmdline_configure()
     else:
         raise Exception(f"Unknown node {node}")
