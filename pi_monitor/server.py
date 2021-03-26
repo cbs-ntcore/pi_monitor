@@ -9,7 +9,7 @@ import webbrowser
 
 script_path = os.path.abspath(__file__)
 static_directory = os.path.join(os.path.dirname(script_path), 'static')
-default_port = os.environ.get('PM_PORT', 8000)
+default_port = int(os.environ.get('PM_PORT', 8000))
 
 
 def process_request(obj, request):
