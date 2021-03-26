@@ -176,6 +176,7 @@ class MonitorConnection:
             f"{self.ip}:{source_directory}",
             f"{destination_directory}",
         ]
+        logging.debug(f"Monitor[{self.name}]: transfer_files using cmd={cmd} fns={fns}")
         self.transfer_process = subprocess.Popen(
             cmd, stdin=subprocess.PIPE)
         #self.transfer_process.communicate(input="\n".join(fns))
@@ -215,9 +216,11 @@ class Controller:
         return any((m.is_transferring() for m in self.monitors))
 
     def transfer_files(self, destination_directory):
+        logging.debug(f"Controller.transfer_files({destination_directory})")
         for monitor in self.monitors:
             monitor_dst = os.path.join(destination_directory, monitor.name)
             if not os.path.exists(monitor_dst):
+                logging.debug(f"Controller: making directory for monitor files: {monitor_dst}")
                 os.makedirs(monitor_dst)
             monitor.transfer_files(monitor_dst)
 
@@ -228,6 +231,7 @@ def run(*args, **kwargs):
     if "monitors" not in monitors_cfg:
         raise Exception(
             f"Monitors list in {monitors_filename} missing 'monitors': {monitors_cfg}")
+    logging.debug(f"Read monitors config from {monitors_filename}: {monitors_cfg}")
     monitors = []
     for m in monitors_cfg["monitors"]:
         if isinstance(m, str):
@@ -239,7 +243,9 @@ def run(*args, **kwargs):
             assert isinstance(m[1], int)
             ip, port = m
         monitors.append((ip, port))
+        logging.debug(f"Adding MonitorConnection for {ip}:{port}")
         backend.register(MonitorConnection, ip_to_pattern(ip), ip, args=(ip, port))
+    logging.debug(f"Adding Controller with monitors={monitors}")
     backend.register(Controller, r"^/controller/.??", args=(monitors, ))
     backend.register(filesystem.FileSystem, r"^/filesystem/.??")
     backend.serve(*args, **kwargs)
