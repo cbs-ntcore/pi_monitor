@@ -50,6 +50,11 @@ class ObjectHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=static_directory, **kwargs)
+        if not os.environ.get('PM_HTTP_DEBUG', 0):
+            logging.debug(
+                "Disabling http log messages, "
+                "set PM_HTTP_DEBUG env variable to enable")
+            self.log_message = lambda self, format, *args: None
 
     def do_GET(self):
         directory = static_directory
