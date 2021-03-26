@@ -252,6 +252,8 @@ def run(*args, **kwargs):
 
 
 def cmdline_configure():
+    modified = False
+    monitors = default_monitors
     if os.path.exists(monitors_filename):
         print(f"Found existing monitors.json at {monitors_filename}")
         try:
@@ -270,13 +272,21 @@ def cmdline_configure():
             print(f"Invalid input: '{r}' is 0 length")
             continue
         if r[0] == 'q':  # quit
-            print("Quitting...")
-            break
+            if not modified:
+                print("Quitting...")
+                break
+            else:
+                print("Quit without saving changes? [y]es/[n]o?")
+                confirmed = input(">>").strip().lower()
+                if len(confirmed) and confirmed[0] == 'y':
+                    print("Quitting...")
+                    break
         elif r[0] == 's':  # save
             print(f"Saving to {monitors_filename}")
             try:
                 config.save(monitors, monitors_filename)
                 print("Finished saving")
+                modified = False
             except Exception as e:
                 print(f"!! Failed to save with exception {e} !!")
         elif r[0] == 'd':  # remove
@@ -286,6 +296,7 @@ def cmdline_configure():
                 print(f"Invalid ip {ip} not in list")
             else:
                 monitors['monitors'].remove(ip)
+                modified = True
         elif r[0] == 'a':  # add
             print("Enter the ip address you want to add")
             ip = input(">>").strip()
@@ -300,5 +311,6 @@ def cmdline_configure():
             else:
                 print(f"Adding ip {ip} to monitors")
                 monitors['monitors'].append(ip)
+                modified = True
         else:
             print(f"Unknown input {r}")
